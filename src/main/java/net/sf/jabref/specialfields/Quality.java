@@ -16,8 +16,9 @@
 package net.sf.jabref.specialfields;
 
 import java.util.ArrayList;
+import java.util.List;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import net.sf.jabref.gui.IconTheme;
 import net.sf.jabref.logic.l10n.Localization;
@@ -28,18 +29,22 @@ public class Quality extends SpecialField {
 
 
     private Quality() {
-        ArrayList<SpecialFieldValue> values = new ArrayList<>();
+        List<SpecialFieldValue> values = new ArrayList<>();
         // DO NOT TRANSLATE "qualityAssured" as this makes the produced .bib files non portable
         values.add(new SpecialFieldValue(this, "qualityAssured", "toggleQualityAssured",
                 Localization.lang("Toggle quality assured"), IconTheme.JabRefIcon.QUALITY_ASSURED.getSmallIcon(),
                 Localization.lang("Toggle quality assured")));
         this.setValues(values);
-        TEXT_DONE_PATTERN = "Toggled quality for %0 entries";
     }
 
     @Override
     public String getFieldName() {
         return SpecialFieldsUtils.FIELDNAME_QUALITY;
+    }
+
+    @Override
+    public String getLocalizedFieldName() {
+        return Localization.lang("Quality");
     }
 
     public static Quality getInstance() {
@@ -52,16 +57,6 @@ public class Quality extends SpecialField {
     @Override
     public Icon getRepresentingIcon() {
         return IconTheme.JabRefIcon.QUALITY.getSmallIcon();
-    }
-
-    @Override
-    public String getToolTip() {
-        return this.getValues().get(0).getToolTipText();
-    }
-
-    @Override
-    public String getMenuString() {
-        return Localization.lang("Quality");
     }
 
     @Override

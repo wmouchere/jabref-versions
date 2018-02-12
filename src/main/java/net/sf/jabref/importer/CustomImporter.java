@@ -131,12 +131,11 @@ public class CustomImporter implements Comparable<CustomImporter> {
         return this.name;
     }
 
-    public ImportFormat getInstance() throws IOException, MalformedURLException, ClassNotFoundException,
+    public ImportFormat getInstance() throws IOException, ClassNotFoundException,
             InstantiationException, IllegalAccessException {
         try (URLClassLoader cl = new URLClassLoader(new URL[] {getBasePathUrl()})) {
             Class<?> clazz = Class.forName(className, true, cl);
             ImportFormat importFormat = (ImportFormat) clazz.newInstance();
-            importFormat.setIsCustomImporter(true);
             return importFormat;
         }
     }

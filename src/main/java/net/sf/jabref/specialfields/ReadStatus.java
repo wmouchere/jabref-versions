@@ -16,8 +16,9 @@
 package net.sf.jabref.specialfields;
 
 import java.util.ArrayList;
+import java.util.List;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import net.sf.jabref.gui.IconTheme;
 import net.sf.jabref.logic.l10n.Localization;
@@ -30,7 +31,7 @@ public class ReadStatus extends SpecialField {
 
 
     private ReadStatus() {
-        ArrayList<SpecialFieldValue> values = new ArrayList<>();
+        List<SpecialFieldValue> values = new ArrayList<>();
         values.add(new SpecialFieldValue(this, null, "clearReadStatus", Localization.lang("Clear read status"), null,
                 Localization.lang("No read status information")));
         Icon tmpicon;
@@ -44,7 +45,6 @@ public class ReadStatus extends SpecialField {
                 Localization.lang("Set read status to skimmed"), tmpicon,
                 Localization.lang("Read status skimmed")));
         this.setValues(values);
-        TEXT_DONE_PATTERN = "Set read status to '%0' for %1 entries";
     }
 
     public static ReadStatus getInstance() {
@@ -60,17 +60,12 @@ public class ReadStatus extends SpecialField {
     }
 
     @Override
+    public String getLocalizedFieldName() {
+        return Localization.lang("Read status");
+    }
+
+    @Override
     public Icon getRepresentingIcon() {
         return this.icon;
-    }
-
-    @Override
-    public String getToolTip() {
-        return Localization.lang("Read status");
-    }
-
-    @Override
-    public String getMenuString() {
-        return Localization.lang("Read status");
     }
 }

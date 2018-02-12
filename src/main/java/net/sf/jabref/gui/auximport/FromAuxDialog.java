@@ -39,6 +39,7 @@ package net.sf.jabref.gui.auximport;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.util.Collections;
 
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
@@ -59,13 +60,13 @@ import javax.swing.JTextField;
 
 import net.sf.jabref.Globals;
 import net.sf.jabref.gui.BasePanel;
-import net.sf.jabref.gui.keyboard.KeyBinding;
-import net.sf.jabref.logic.auxparser.AuxParserResult;
-import net.sf.jabref.model.database.BibDatabase;
-import net.sf.jabref.gui.JabRefFrame;
 import net.sf.jabref.gui.FileDialogs;
-import net.sf.jabref.logic.l10n.Localization;
+import net.sf.jabref.gui.JabRefFrame;
+import net.sf.jabref.gui.keyboard.KeyBinding;
 import net.sf.jabref.logic.auxparser.AuxParser;
+import net.sf.jabref.logic.auxparser.AuxParserResult;
+import net.sf.jabref.logic.l10n.Localization;
+import net.sf.jabref.model.database.BibDatabase;
 
 import com.jgoodies.forms.builder.ButtonBarBuilder;
 import com.jgoodies.forms.builder.DefaultFormBuilder;
@@ -264,9 +265,7 @@ public class FromAuxDialog extends JDialog {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            String chosen = FileDialogs.getNewFile(frame,
-                    new File(comp.getText()),
-                    ".aux",
+            String chosen = FileDialogs.getNewFile(frame, new File(comp.getText()), Collections.singletonList(".aux"),
                     JFileChooser.OPEN_DIALOG, false);
             if (chosen != null) {
                 File newFile = new File(chosen);

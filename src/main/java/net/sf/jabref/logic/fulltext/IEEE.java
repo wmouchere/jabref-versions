@@ -8,12 +8,12 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import net.sf.jabref.logic.net.URLDownload;
 import net.sf.jabref.logic.util.DOI;
 import net.sf.jabref.model.entry.BibEntry;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Class for finding PDF URLs for entries on IEEE
@@ -67,7 +67,7 @@ public class IEEE implements FullTextFinder {
         }
 
         // Download the HTML page containing a frame with the PDF
-        String framePage = new URLDownload(new URL(BASE_URL + stampString)).downloadToString(StandardCharsets.UTF_8);
+        String framePage = new URLDownload(BASE_URL + stampString).downloadToString(StandardCharsets.UTF_8);
         // Try to find the direct PDF link
         Matcher matcher = PDF_PATTERN.matcher(framePage);
         if (matcher.find()) {

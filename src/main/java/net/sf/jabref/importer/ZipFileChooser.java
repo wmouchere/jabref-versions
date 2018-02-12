@@ -49,12 +49,12 @@ import javax.swing.ListSelectionModel;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableColumnModel;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import net.sf.jabref.gui.util.FocusRequester;
 import net.sf.jabref.importer.fileformat.ImportFormat;
 import net.sf.jabref.logic.l10n.Localization;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Dialog to allow users to choose a file contained in a ZIP file.
@@ -110,7 +110,7 @@ class ZipFileChooser extends JDialog {
                 try {
                     ImportFormat importFormat = importer.getInstance();
                     importer.setName(importFormat.getFormatName());
-                    importer.setCliId(importFormat.getCLIId());
+                    importer.setCliId(importFormat.getId());
                     importCustomizationDialog.addOrReplaceImporter(importer);
                     dispose();
                 } catch (IOException | ClassNotFoundException | InstantiationException | IllegalAccessException exc) {

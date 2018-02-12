@@ -15,19 +15,19 @@
  */
 package net.sf.jabref.importer.fileformat;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.io.InputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import net.sf.jabref.importer.ImportFormatReader;
-import net.sf.jabref.importer.OutputPrinter;
-import net.sf.jabref.model.entry.*;
+import net.sf.jabref.importer.ParserResult;
+import net.sf.jabref.model.entry.AuthorList;
+import net.sf.jabref.model.entry.BibEntry;
+import net.sf.jabref.model.entry.IdGenerator;
 
 /**
  * Imports an Ovid file.
@@ -53,63 +53,48 @@ public class OvidImporter extends ImportFormat {
     private static final Pattern OVID_PATTERN = Pattern.compile(OVID_PATTERN_STRING);
 
     private static final int MAX_ITEMS = 50;
-    /**
-     * Return the name of this import format.
-     */
+
     @Override
     public String getFormatName() {
         return "Ovid";
     }
 
-    /*
-     *  (non-Javadoc)
-     * @see net.sf.jabref.imports.ImportFormat#getCLIId()
-     */
     @Override
-    public String getCLIId() {
-        return "ovid";
+    public List<String> getExtensions() {
+        return null;
     }
 
-
-
-    /**
-     * Check whether the source is in the correct format for this importer.
-     */
     @Override
-    public boolean isRecognizedFormat(InputStream stream) throws IOException {
+    public String getDescription() {
+        return null;
+    }
 
-        try (BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
-            String str;
-            int i = 0;
-            while (((str = in.readLine()) != null) && (i < MAX_ITEMS)) {
+    @Override
+    public boolean isRecognizedFormat(BufferedReader reader) throws IOException {
+        String str;
+        int i = 0;
+        while (((str = reader.readLine()) != null) && (i < MAX_ITEMS)) {
 
-                if (OvidImporter.OVID_PATTERN.matcher(str).find()) {
-                    return true;
-                }
-
-                i++;
+            if (OvidImporter.OVID_PATTERN.matcher(str).find()) {
+                return true;
             }
+
+            i++;
         }
         return false;
     }
 
-    /**
-     * Parse the entries in the source, and return a List of BibEntry
-     * objects.
-     */
     @Override
-    public List<BibEntry> importEntries(InputStream stream, OutputPrinter status) throws IOException {
+    public ParserResult importDatabase(BufferedReader reader) throws IOException {
         List<BibEntry> bibitems = new ArrayList<>();
         StringBuilder sb = new StringBuilder();
-        try (BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
-            String line;
-            while ((line = in.readLine()) != null) {
-                if (!line.isEmpty() && (line.charAt(0) != ' ')) {
-                    sb.append("__NEWFIELD__");
-                }
-                sb.append(line);
-                sb.append('\n');
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (!line.isEmpty() && (line.charAt(0) != ' ')) {
+                sb.append("__NEWFIELD__");
             }
+            sb.append(line);
+            sb.append('\n');
         }
 
         String[] items = sb.toString().split(OVID_PATTERN_STRING);
@@ -242,7 +227,7 @@ public class OvidImporter extends ImportFormat {
 
         }
 
-        return bibitems;
+        return new ParserResult(bibitems);
     }
 
     /**

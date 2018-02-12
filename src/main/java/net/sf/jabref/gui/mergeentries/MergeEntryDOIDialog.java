@@ -18,28 +18,29 @@ package net.sf.jabref.gui.mergeentries;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.swing.*;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JOptionPane;
+import javax.swing.JSeparator;
 
-import net.sf.jabref.gui.undo.UndoableChangeType;
-import net.sf.jabref.model.entry.BibEntry;
-import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.JabRefPreferences;
 import net.sf.jabref.gui.BasePanel;
 import net.sf.jabref.gui.undo.NamedCompound;
+import net.sf.jabref.gui.undo.UndoableChangeType;
 import net.sf.jabref.gui.undo.UndoableFieldChange;
 import net.sf.jabref.gui.util.PositionWindow;
 import net.sf.jabref.importer.fetcher.DOItoBibTeXFetcher;
+import net.sf.jabref.logic.l10n.Localization;
+import net.sf.jabref.model.entry.BibEntry;
 
 import com.jgoodies.forms.builder.ButtonBarBuilder;
 import com.jgoodies.forms.layout.CellConstraints;
+import com.jgoodies.forms.layout.ColumnSpec;
 import com.jgoodies.forms.layout.FormLayout;
 import com.jgoodies.forms.layout.RowSpec;
-import com.jgoodies.forms.layout.ColumnSpec;
 
 /**
- * @author Oscar
- *
- *         Dialog for merging Bibtex entry with data fetched from DOI
+ * Dialog for merging Bibtex entry with data fetched from DOI
  */
 public class MergeEntryDOIDialog extends JDialog {
 
@@ -69,7 +70,7 @@ public class MergeEntryDOIDialog extends JDialog {
 
         this.originalEntry = panel.getSelectedEntries().get(0);
         panel.output(Localization.lang("Fetching info based on DOI"));
-        this.doiEntry = doiFetcher.getEntryFromDOI(this.originalEntry.getField("doi"), null);
+        this.doiEntry = doiFetcher.getEntryFromDOI(this.originalEntry.getField("doi")).orElse(null);
 
         if (this.doiEntry == null) {
             panel.output("");
@@ -141,8 +142,8 @@ public class MergeEntryDOIDialog extends JDialog {
         BibEntry mergedEntry = mergeEntries.getMergeEntry();
 
         if ("cancel".equals(button)) {
-            // Cancelled, throw it away
-            panel.output(Localization.lang("Cancelled merging entries"));
+            // Canceled, throw it away
+            panel.output(Localization.lang("Canceled merging entries"));
         } else if ("done".equals(button)) {
             // Updated the original entry with the new fields
             Set<String> jointFields = new TreeSet<>(mergedEntry.getFieldNames());

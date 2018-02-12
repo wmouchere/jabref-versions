@@ -15,10 +15,14 @@
  */
 package net.sf.jabref.gui.preftabs;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Component;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.prefs.BackingStoreException;
 
@@ -32,16 +36,20 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.ListSelectionModel;
 
-import net.sf.jabref.*;
+import net.sf.jabref.Globals;
+import net.sf.jabref.JabRefException;
+import net.sf.jabref.JabRefPreferences;
+import net.sf.jabref.JabRefPreferencesFilter;
+import net.sf.jabref.JabRefPreferencesFilterDialog;
 import net.sf.jabref.exporter.ExportFormats;
-import net.sf.jabref.gui.JabRefFrame;
 import net.sf.jabref.gui.FileDialogs;
 import net.sf.jabref.gui.GUIGlobals;
+import net.sf.jabref.gui.JabRefFrame;
+import net.sf.jabref.gui.keyboard.KeyBinder;
 import net.sf.jabref.gui.maintable.MainTable;
+import net.sf.jabref.logic.l10n.Localization;
 
 import com.jgoodies.forms.builder.ButtonBarBuilder;
-import net.sf.jabref.logic.l10n.Localization;
-import net.sf.jabref.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -67,7 +75,8 @@ public class PreferencesDialog extends JDialog {
 
     private static final Log LOGGER = LogFactory.getLog(PreferencesDialog.class);
 
-    public PreferencesDialog(JabRefFrame parent, JabRef jabRef) {
+
+    public PreferencesDialog(JabRefFrame parent) {
         super(parent, Localization.lang("JabRef preferences"), false);
         JabRefPreferences prefs = JabRefPreferences.getInstance();
         frame = parent;
@@ -96,10 +105,10 @@ public class PreferencesDialog extends JDialog {
         tabs.add(new TableColumnsTab(prefs, parent));
         tabs.add(new LabelPatternPrefTab(prefs, parent.getCurrentBasePanel()));
         tabs.add(new PreviewPrefsTab(prefs));
-        tabs.add(new NameFormatterTab());
-        tabs.add(new ImportSettingsTab());
-        tabs.add(new XmpPrefsTab());
-        tabs.add(new AdvancedTab(prefs, jabRef));
+        tabs.add(new NameFormatterTab(prefs));
+        tabs.add(new ImportSettingsTab(prefs));
+        tabs.add(new XmpPrefsTab(prefs));
+        tabs.add(new AdvancedTab(prefs));
 
         // add all tabs
         tabs.forEach(tab -> main.add((Component) tab, tab.getTabName()));
@@ -153,13 +162,13 @@ public class PreferencesDialog extends JDialog {
         buttonBarBuilder.addGlue();
 
         // Key bindings:
-        Util.bindCloseDialogKeyToCancelAction(this.getRootPane(), cancelAction);
+        KeyBinder.bindCloseDialogKeyToCancelAction(this.getRootPane(), cancelAction);
 
         // Import and export actions:
         exportPreferences.setToolTipText(Localization.lang("Export preferences to file"));
         exportPreferences.addActionListener(e -> {
-            String filename = FileDialogs.getNewFile(frame, new File(System.getProperty("user.home")), ".xml",
-                    JFileChooser.SAVE_DIALOG, false);
+            String filename = FileDialogs.getNewFile(frame, new File(System.getProperty("user.home")),
+                    Collections.singletonList(".xml"), JFileChooser.SAVE_DIALOG, false);
             if (filename == null) {
                 return;
             }
@@ -180,8 +189,8 @@ public class PreferencesDialog extends JDialog {
 
         importPreferences.setToolTipText(Localization.lang("Import preferences from file"));
         importPreferences.addActionListener(e -> {
-            String filename = FileDialogs.getNewFile(frame, new File(System.getProperty("user.home")), ".xml",
-                    JFileChooser.OPEN_DIALOG, false);
+            String filename = FileDialogs.getNewFile(frame, new File(System.getProperty("user.home")),
+                    Collections.singletonList(".xml"), JFileChooser.OPEN_DIALOG, false);
             if (filename != null) {
                 try {
                     prefs.importPreferences(filename);
@@ -260,8 +269,7 @@ public class PreferencesDialog extends JDialog {
             MainTable.updateRenderers();
             GUIGlobals.updateEntryEditorColors();
             frame.setupAllTables();
-            frame.getGroupSelector().revalidateGroups(); // icons may have
-            // changed
+            frame.getGroupSelector().revalidateGroups(); // icons may have changed
             frame.output(Localization.lang("Preferences recorded."));
         }
     }

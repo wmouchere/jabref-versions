@@ -16,23 +16,23 @@
 package net.sf.jabref.importer;
 
 import java.io.File;
-import java.nio.charset.Charset;
-
-import java.util.List;
-import java.util.Map;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import net.sf.jabref.*;
+import net.sf.jabref.BibDatabaseContext;
+import net.sf.jabref.MetaData;
 import net.sf.jabref.model.database.BibDatabase;
 import net.sf.jabref.model.database.BibDatabases;
 import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.model.entry.EntryType;
 
 public class ParserResult {
-    public static final ParserResult INVALID_FORMAT = new ParserResult(null, null, null);
-    public static final ParserResult FILE_LOCKED = new ParserResult(null, null, null);
+
+    private static final ParserResult NULL_RESULT = new ParserResult(null, null, null);
     private final BibDatabase base;
     private MetaData metaData;
     private final Map<String, EntryType> entryTypes;
@@ -42,22 +42,29 @@ public class ParserResult {
     private final List<String> duplicateKeys = new ArrayList<>();
 
     private String errorMessage;
-    // Which encoding was used?
-    private Charset encoding;
 
     private boolean postponedAutosaveFound;
     private boolean invalid;
     private boolean toOpenTab;
 
+    public ParserResult() {
+        this(Collections.emptyList());
+    }
 
     public ParserResult(Collection<BibEntry> entries) {
-        this(BibDatabases.createDatabase(BibDatabases.purgeEmptyEntries(entries)), null, new HashMap<>());
+        this(BibDatabases.createDatabase(BibDatabases.purgeEmptyEntries(entries)), new MetaData(), new HashMap<>());
     }
 
     public ParserResult(BibDatabase base, MetaData metaData, Map<String, EntryType> entryTypes) {
         this.base = base;
         this.metaData = metaData;
         this.entryTypes = entryTypes;
+    }
+
+    public static ParserResult fromErrorMessage(String message) {
+        ParserResult parserResult = new ParserResult();
+        parserResult.addWarning(message);
+        return parserResult;
     }
 
     /**
@@ -95,23 +102,6 @@ public class ParserResult {
 
     public void setFile(File f) {
         file = f;
-    }
-
-    /**
-     * Sets the variable indicating which encoding was used during parsing.
-     *
-     * @param enc the encoding.
-     */
-    public void setEncoding(Charset enc) {
-        encoding = enc;
-    }
-
-    /**
-     * Returns the encoding used during parsing, or null if not specified (indicates that
-     * prefs.get(JabRefPreferences.DEFAULT_ENCODING) was used).
-     */
-    public Charset getEncoding() {
-        return encoding;
     }
 
     /**
@@ -188,5 +178,14 @@ public class ParserResult {
 
     public BibDatabaseContext getDatabaseContext() {
         return new BibDatabaseContext(base, metaData, file);
+    }
+
+    public boolean isNullResult() {
+        // TODO Auto-generated method stub
+        return this == NULL_RESULT;
+    }
+
+    public static ParserResult getNullResult() {
+        return NULL_RESULT;
     }
 }

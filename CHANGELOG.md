@@ -6,9 +6,72 @@ Here, the categories "Changed" for added and changed functionality,
 "Fixed" for fixed functionality, and
 "Removed" for removed functionality is used.
 
-We refer to [GitHub issues](https://github.com/JabRef/jabref/issues) by using `#NUM`,
-to [sourceforge bugs](https://sourceforge.net/p/jabref/bugs/) by using `bug NUM`, and
-to [sourceforge feature requests](https://sourceforge.net/p/jabref/features/) by using `feature request NUM`.
+We refer to [GitHub issues](https://github.com/JabRef/jabref/issues) by using `#NUM`.
+
+
+## [3.4] - 2016-06-02
+
+### Changed
+- Implemented [#629](https://github.com/JabRef/jabref/issues/629): Explicit groups are now written in the "groups" field of the entry instead of at the end of the bib file
+- Main table now accepts pasted DOIs and tries to retrieve the entry
+- Added support for several Biblatex-fields through drop-down lists with valid alternatives
+- Added integrity checker for an odd number of unescaped '#'
+- Implemented [feature request 384](https://sourceforge.net/p/jabref/features/384): The merge entries dialog now show all text and colored differences between the fields
+- Implemented [#1233](https://github.com/JabRef/jabref/issues/1233): Group side pane now takes up all the remaining space
+- Added integrity check detecting HTML-encoded characters
+- Added missing help files
+- Implemented [feature request #1294](https://github.com/JabRef/jabref/issues/1294): Added possibility to filter for `*.jstyle` files in OpenOffice/LibreOffice style selection dialog. Open style selection dialog in directory of last selected file
+- Added integrity check for ISSN
+- Add LaTeX to Unicode converter as cleanup operation
+- Added an option in the about dialog to easily copy the version information of JabRef
+- Integrity check table can be sorted by clicking on column headings
+- Added \SOFTWARE\Jabref 'Path' registry entry for installation path inside the installer
+- Added an additional icon to distinguish DOI and URL links ([feature request #696](https://github.com/JabRef/jabref/issues/696))
+- Added nbib fields to Medlineplain importer
+- Implemented [#1342](https://github.com/JabRef/jabref/issues/1342): show description of case converters as tooltip 
+- Updated German translation
+
+### Fixed
+- Fixed [#473](https://github.com/JabRef/jabref/issues/473): Values in an entry containing symbols like ' are now properly escaped for exporting to the database
+- Fixed [#1270](https://github.com/JabRef/jabref/issues/1270): Auto save is now working again as expected (without leaving a bunch of temporary files behind)
+- Fixed [#1234](https://github.com/JabRef/jabref/issues/1234): NPE when getting information from retrieved DOI
+- Fixed [#1245](https://github.com/JabRef/jabref/issues/1245): Empty jstyle properties can now be specified as ""
+- Fixed [#1259](https://github.com/JabRef/jabref/issues/1259): NPE when sorting tabs
+- Fixed display bug in the cleanup dialog: field formatters are now correctly displayed using their name 
+- Fixed [#1271](https://github.com/JabRef/jabref/issues/1271): Authors with compound first names are displayed properly 
+- Fixed: Selecting invalid jstyle causes NPE and prevents opening of style selection dialog
+- Fixed: Move linked files to default directory works again
+- Fixed [#1327](https://github.com/JabRef/jabref/issues/1327): PDF cleanup changes order of linked pdfs
+- Fixed [#1313](https://github.com/JabRef/jabref/issues/1313): Remove UI for a configuration option which was no longer available
+- Fixed [#1340](https://github.com/JabRef/jabref/issues/1340): Edit -> Mark Specific Color Dysfunctional on OSX
+- Fixed [#1245](https://github.com/JabRef/jabref/issues/1245): Empty jstyle properties can now be specified as ""
+- Fixed [#1364](https://github.com/JabRef/jabref/issues/1364): Windows: install to LOCALAPPDATA directory for non-admin users
+- Fixed [#1365](https://github.com/JabRef/jabref/issues/1365): Default label pattern back to `[auth][year]`
+- Fixed [#796](https://github.com/JabRef/jabref/issues/796): Undoing more than one entry at the same time is now working
+- Fixed [#1122](https://github.com/JabRef/jabref/issues/1122): Group view is immediately updated after adding an entry to a group
+- Fixed [#171](https://github.com/JabRef/jabref/issues/171): Dragging an entry to a group preserves scrolling
+- Fixed [#1353](https://github.com/JabRef/jabref/issues/1353): Fetch-Preview did not display updated BibTeX-Key after clicking on `Generate Now`
+- Fixed [#1381](https://github.com/JabRef/jabref/issues/1381): File links containing blanks are broken if non-default viewer is set
+- Fixed sourceforge bug 1000: shorttitleINI can generate the initials of the shorttitle
+- Fixed [#1394](https://github.com/JabRef/jabref/issues/1394): Personal journal abbrevations could not be saved
+- Fixed [#1400](https://github.com/JabRef/jabref/issues/1400): Detect path constructs wrong path for Windows
+- Fixed [#973](https://github.com/JabRef/jabref/issues/973): Add additional DOI field for English version of MS Office 2007 XML
+- Fixed [#1412](https://github.com/JabRef/jabref/issues/1412): Save action *protect terms* protects terms within words unecessarily
+- Fixed [#1420](https://github.com/JabRef/jabref/issues/1420): Auto downloader should respect file pattern and propose correct filename
+- Fixed [#651](https://github.com/JabRef/jabref/issues/651): Improve parsing of author names containing braces
+- Fixed [#1421](https://github.com/JabRef/jabref/issues/1421): Auto downloader should try to retrieve DOI if not present and fetch afterwards
+- Fixed [#1457](https://github.com/JabRef/jabref/issues/1457): Support multiple words inside LaTeX commands to RTF export
+- Entries retain their groupmembership when undoing their cut/deletion
+- Fixed [#1450](https://github.com/JabRef/jabref/issues/1450): EntryEditor is restored in the correct size after preference changes
+
+### Removed
+- Removed possibility to export entries/databases to an `.sql` file, as the logic cannot easily use the correct escape logic
+- Removed support of old groups format, which was used prior to JabRef version 1.6. If you happen to have a 10 years old .bib file, then JabRef 3.3 can be used to convert it to the current format.
+- Removed possibility to automatically add braces via Option - Preferences - File - Store the following fields with braces around capital letters. Please use save actions instead for adding braces automatically.
+- Removed button to refresh groups view. This button shouldn't be needed anymore. Please report any cases where the groups view is not updated automatically.
+- Medline and GVK importer no longer try to expand author initials (i.e.  `EH Wissler -> E. H. Wissler`).
+- Removed not-working option "Select Matches" under Groups -> Settings.
+
 
 ## [3.3] - 2016-04-17
 
@@ -58,8 +121,10 @@ to [sourceforge feature requests](https://sourceforge.net/p/jabref/features/) by
 - Implemented [#672](https://github.com/JabRef/jabref/issues/672): FileList now distributes its space dependent on the width of its columns
 - Added missing German translations
 - Swedish is added as a language option (still not a complete translation)
+- [#969](https://github.com/JabRef/jabref/issues/969) Adding and replacing old event system mechanisms with Google Guava EventBus.
 
 ### Fixed
+- Alleviate multiuser concurrency issue when near simultaneous saves occur to a shared database file
 - Fixed [#318](https://github.com/JabRef/jabref/issues/318): Improve normalization of author names
 - Fixed [#598](https://github.com/JabRef/jabref/issues/598) and [#402](https://github.com/JabRef/jabref/issues/402): No more issues with invalid icons for ExternalFileTypes in global search or after editing the settings
 - Fixed [#883](https://github.com/JabRef/jabref/issues/883): No NPE during cleanup
@@ -237,7 +302,7 @@ to [sourceforge feature requests](https://sourceforge.net/p/jabref/features/) by
    - Autolink requires that the filename starts with the given BibTeX key and the default filename patterns is key followed by title
    - Default sorting changed
    - Default label pattern changed from `[auth][year]` to `[authors3][year]`
- - Feature: case changers now leave protected areas (enclosed with curly brakets) alone
+ - Feature: case changers now leave protected areas (enclosed with curly brackets) alone
  - BREAKING: The BibTeX key generator settings from previous versions are lost
  - BREAKING: LabelPatterns `[auth.etal]`, `[authEtAl]`, `[authors]`, `[authorsN]`, `[authorLast]` and more to omit spaces and commas (and work as described at http://jabref.sourceforge.net/help/LabelPatterns.php)
  - BREAKING: `[keywordN]` returns the Nth keyword (as described in the help) and not the first N keywords
@@ -302,7 +367,7 @@ Since much functionality has changed during development, a release of this versi
 
 The changelog of 2.11 and versions before is maintained as [text file](https://github.com/JabRef/jabref/blob/dev_2.11/CHANGELOG) in the [dev_2.11 branch](https://github.com/JabRef/jabref/tree/dev_2.11).
 
-[Unreleased]: https://github.com/JabRef/jabref/compare/v3.3...HEAD
+[3.4]: https://github.com/JabRef/jabref/compare/v3.3...v3.4
 [3.3]: https://github.com/JabRef/jabref/compare/v3.2...v3.3
 [3.2]: https://github.com/JabRef/jabref/compare/v3.1...v3.2
 [3.1]: https://github.com/JabRef/jabref/compare/v3.0...v3.1

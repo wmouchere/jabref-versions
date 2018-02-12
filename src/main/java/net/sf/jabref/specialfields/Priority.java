@@ -16,8 +16,9 @@
 package net.sf.jabref.specialfields;
 
 import java.util.ArrayList;
+import java.util.List;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import net.sf.jabref.gui.IconTheme;
 import net.sf.jabref.logic.l10n.Localization;
@@ -30,7 +31,7 @@ public class Priority extends SpecialField {
 
 
     private Priority() {
-        ArrayList<SpecialFieldValue> values = new ArrayList<>();
+        List<SpecialFieldValue> values = new ArrayList<>();
         values.add(new SpecialFieldValue(this, null, "clearPriority", Localization.lang("Clear priority"), null,
                 Localization.lang("No priority information")));
         Icon tmpicon;
@@ -45,7 +46,6 @@ public class Priority extends SpecialField {
         values.add(new SpecialFieldValue(this, "prio3", "setPriority3", Localization.lang("Set priority to low"),
                 tmpicon, Localization.lang("Priority low")));
         this.setValues(values);
-        TEXT_DONE_PATTERN = "Set priority to '%0' for %1 entries";
     }
 
     public static Priority getInstance() {
@@ -60,18 +60,12 @@ public class Priority extends SpecialField {
         return SpecialFieldsUtils.FIELDNAME_PRIORITY;
     }
 
+    @Override public String getLocalizedFieldName() {
+        return Localization.lang("Priority");
+    }
+
     @Override
     public Icon getRepresentingIcon() {
         return this.icon;
-    }
-
-    @Override
-    public String getToolTip() {
-        return Localization.lang("Priority");
-    }
-
-    @Override
-    public String getMenuString() {
-        return Localization.lang("Priority");
     }
 }

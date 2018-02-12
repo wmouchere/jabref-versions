@@ -17,7 +17,8 @@ package net.sf.jabref.specialfields;
 
 import java.util.Optional;
 
-import javax.swing.*;
+import javax.swing.Icon;
+import javax.swing.JLabel;
 
 import net.sf.jabref.gui.JabRefFrame;
 
@@ -106,8 +107,7 @@ public class SpecialFieldValue {
                     // if field contains only one value, it has to be nulled
                     // otherwise, another setting does not empty the field
                     this.field.getValues().size() == 1,
-                    this.getMenuString(),
-                    this.field.TEXT_DONE_PATTERN);
+                    this.getMenuString());
         }
         return action;
     }
