@@ -19,7 +19,9 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 
+import net.sf.jabref.Globals;
 import net.sf.jabref.gui.JabRefFrame;
+import net.sf.jabref.gui.keyboard.KeyBinding;
 import net.sf.jabref.gui.util.GUIUtil;
 import net.sf.jabref.logic.integrity.IntegrityCheck;
 import net.sf.jabref.logic.integrity.IntegrityMessage;
@@ -39,11 +41,13 @@ public class IntegrityCheckAction extends MnemonicAwareAction {
     public IntegrityCheckAction(JabRefFrame frame) {
         this.frame = frame;
         putValue(Action.NAME, Localization.menuTitle("Check integrity") + ELLIPSES);
+        putValue(Action.ACCELERATOR_KEY, Globals.getKeyPrefs().getKey(KeyBinding.CHECK_INTEGRITY));
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        IntegrityCheck check = new IntegrityCheck(frame.getCurrentBasePanel().getBibDatabaseContext());
+        IntegrityCheck check = new IntegrityCheck(frame.getCurrentBasePanel().getBibDatabaseContext(),
+                Globals.prefs.getFileDirectoryPreferences());
         List<IntegrityMessage> messages = check.checkBibtexDatabase();
 
         if (messages.isEmpty()) {

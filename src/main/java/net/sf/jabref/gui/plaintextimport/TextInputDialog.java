@@ -48,6 +48,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 import javax.swing.JToolBar;
 import javax.swing.ListSelectionModel;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
@@ -70,8 +71,6 @@ import net.sf.jabref.gui.undo.NamedCompound;
 import net.sf.jabref.gui.util.component.OverlayPanel;
 import net.sf.jabref.logic.bibtex.BibEntryWriter;
 import net.sf.jabref.logic.bibtex.LatexFieldFormatter;
-import net.sf.jabref.logic.bibtex.LatexFieldFormatterPreferences;
-import net.sf.jabref.logic.importer.ImportFormatPreferences;
 import net.sf.jabref.logic.importer.ParserResult;
 import net.sf.jabref.logic.importer.fileformat.FreeCiteImporter;
 import net.sf.jabref.logic.l10n.Localization;
@@ -82,7 +81,7 @@ import net.sf.jabref.model.EntryTypes;
 import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.model.entry.EntryType;
 import net.sf.jabref.model.entry.FieldName;
-import net.sf.jabref.model.entry.FieldProperties;
+import net.sf.jabref.model.entry.FieldProperty;
 import net.sf.jabref.model.entry.InternalBibtexFields;
 import net.sf.jabref.preferences.JabRefPreferences;
 
@@ -92,13 +91,13 @@ import org.apache.commons.logging.LogFactory;
 
 /**
  * import from plain text => simple mark/copy/paste into bibtex entry
- *
+ * <p>
  * TODO
- *   - change colors and fonts
- *   - delete selected text
- *   - make textarea editable
- *   - create several bibtex entries in dialog
- *   - if the dialog works with an existing entry (right click menu item), the cancel option doesn't work well
+ * - change colors and fonts
+ * - delete selected text
+ * - make textarea editable
+ * - create several bibtex entries in dialog
+ * - if the dialog works with an existing entry (right click menu item), the cancel option doesn't work well
  */
 public class TextInputDialog extends JDialog {
 
@@ -165,7 +164,7 @@ public class TextInputDialog extends JDialog {
         JTabbedPane tabbed = new JTabbedPane();
 
         tabbed.add(rawPanel, Localization.lang("Raw source"));
-        tabbed.add(sourcePanel, Localization.lang("BibTeX source"));
+        tabbed.add(sourcePanel, Localization.lang("%0 source", frame.getCurrentBasePanel().getBibDatabaseContext().getMode().getFormattedName()));
 
         // Panel Layout
         panel1.setLayout(new BorderLayout());
@@ -243,7 +242,7 @@ public class TextInputDialog extends JDialog {
 
         JLabel desc = new JLabel("<html><h3>" + Localization.lang("Plain text import") + "</h3><p>"
                 + Localization.lang("This is a simple copy and paste dialog. First load or paste some text into "
-                        + "the text input area.<br>After that, you can mark text and assign it to a BibTeX field.")
+                + "the text input area.<br>After that, you can mark text and assign it to a BibTeX field.")
                 + "</p></html>");
         desc.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
@@ -269,7 +268,7 @@ public class TextInputDialog extends JDialog {
         inputPanel.setMinimumSize(new Dimension(10, 10));
 
         JScrollPane fieldScroller = new JScrollPane(fieldList);
-        fieldScroller.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        fieldScroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
 
         // insert buttons
         insertButton.addActionListener(event -> insertTextForTag(override.isSelected()));
@@ -371,7 +370,7 @@ public class TextInputDialog extends JDialog {
         sourcePreview.setEditable(false);
         sourcePreview.setFont(new Font("Monospaced", Font.PLAIN, Globals.prefs.getInt(JabRefPreferences.FONT_SIZE)));
         JScrollPane paneScrollPane = new JScrollPane(sourcePreview);
-        paneScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        paneScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         paneScrollPane.setPreferredSize(new Dimension(500, 255));
         paneScrollPane.setMinimumSize(new Dimension(10, 10));
 
@@ -423,16 +422,16 @@ public class TextInputDialog extends JDialog {
                     markedTextStore.appendPosition(fieldName, selectionStart, selectionEnd);
 
                     // get old text from BibTeX tag
-                    Optional<String> old = entry.getFieldOptional(fieldName);
+                    Optional<String> old = entry.getField(fieldName);
 
                     // merge old and selected text
                     if (old.isPresent()) {
                         // insert a new name with an additional "and"
-                        if (InternalBibtexFields.getFieldExtras(fieldName).contains(FieldProperties.PERSON_NAMES)) {
+                        if (InternalBibtexFields.getFieldProperties(fieldName).contains(FieldProperty.PERSON_NAMES)) {
                             entry.setField(fieldName, old.get() + " and " + txt);
                         } else if (FieldName.KEYWORDS.equals(fieldName)) {
                             // Add keyword
-                            entry.addKeyword(txt, Globals.prefs.get(JabRefPreferences.KEYWORD_SEPARATOR));
+                            entry.addKeyword(txt, Globals.prefs.getKeywordDelimiter());
                         } else {
                             entry.setField(fieldName, old.get() + txt);
                         }
@@ -453,10 +452,11 @@ public class TextInputDialog extends JDialog {
 
     /**
      * tries to parse the pasted reference with freecite
+     *
      * @return true if successful, false otherwise
      */
     private boolean parseWithFreeCiteAndAddEntries() {
-        FreeCiteImporter fimp = new FreeCiteImporter(ImportFormatPreferences.fromPreferences(Globals.prefs));
+        FreeCiteImporter fimp = new FreeCiteImporter(Globals.prefs.getImportFormatPreferences());
         String text = textPane.getText();
 
         // we have to remove line breaks (but keep empty lines)
@@ -493,7 +493,7 @@ public class TextInputDialog extends JDialog {
     private void updateSourceView() {
         StringWriter sw = new StringWriter(200);
         try {
-            new BibEntryWriter(new LatexFieldFormatter(LatexFieldFormatterPreferences.fromPreferences(Globals.prefs)),
+            new BibEntryWriter(new LatexFieldFormatter(Globals.prefs.getLatexFieldFormatterPreferences()),
                     false).write(entry, sw, frame.getCurrentBasePanel().getBibDatabaseContext().getMode());
             sourcePreview.setText(sw.getBuffer().toString());
         } catch (IOException ex) {
@@ -636,9 +636,9 @@ public class TextInputDialog extends JDialog {
          */
         @Override
         public Component getListCellRendererComponent(JList<?> list, Object value, // value to display
-                int index, // cell index
-                boolean iss, // is the cell selected
-                boolean chf) // the list and the cell have the focus
+                                                      int index, // cell index
+                                                      boolean iss, // is the cell selected
+                                                      boolean chf) // the list and the cell have the focus
         {
             /* The DefaultListCellRenderer class will take care of
              * the JLabels text property, it's foreground and background

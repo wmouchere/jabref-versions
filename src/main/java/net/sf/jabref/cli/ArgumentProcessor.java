@@ -13,16 +13,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.prefs.BackingStoreException;
 
-import net.sf.jabref.BibDatabaseContext;
-import net.sf.jabref.Defaults;
 import net.sf.jabref.Globals;
 import net.sf.jabref.JabRefException;
-import net.sf.jabref.MetaData;
-import net.sf.jabref.external.AutoSetLinks;
+import net.sf.jabref.gui.externalfiles.AutoSetLinks;
 import net.sf.jabref.gui.importer.fetcher.EntryFetcher;
 import net.sf.jabref.gui.importer.fetcher.EntryFetchers;
 import net.sf.jabref.logic.CustomEntryTypesManager;
-import net.sf.jabref.logic.bibtexkeypattern.BibtexKeyPatternPreferences;
 import net.sf.jabref.logic.bibtexkeypattern.BibtexKeyPatternUtil;
 import net.sf.jabref.logic.exporter.BibDatabaseWriter;
 import net.sf.jabref.logic.exporter.BibtexDatabaseWriter;
@@ -33,7 +29,6 @@ import net.sf.jabref.logic.exporter.IExportFormat;
 import net.sf.jabref.logic.exporter.SaveException;
 import net.sf.jabref.logic.exporter.SavePreferences;
 import net.sf.jabref.logic.exporter.SaveSession;
-import net.sf.jabref.logic.importer.ImportFormatPreferences;
 import net.sf.jabref.logic.importer.ImportFormatReader;
 import net.sf.jabref.logic.importer.OpenDatabase;
 import net.sf.jabref.logic.importer.OutputPrinter;
@@ -44,11 +39,16 @@ import net.sf.jabref.logic.logging.JabRefLogger;
 import net.sf.jabref.logic.search.DatabaseSearcher;
 import net.sf.jabref.logic.search.SearchQuery;
 import net.sf.jabref.logic.util.OS;
-import net.sf.jabref.logic.util.strings.StringUtil;
+import net.sf.jabref.model.Defaults;
 import net.sf.jabref.model.database.BibDatabase;
+import net.sf.jabref.model.database.BibDatabaseContext;
 import net.sf.jabref.model.database.BibDatabaseMode;
 import net.sf.jabref.model.entry.BibEntry;
+import net.sf.jabref.model.metadata.MetaData;
+import net.sf.jabref.model.strings.StringUtil;
 import net.sf.jabref.preferences.JabRefPreferences;
+import net.sf.jabref.preferences.SearchPreferences;
+import net.sf.jabref.shared.prefs.SharedDatabasePreferences;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -167,9 +167,10 @@ public class ArgumentProcessor {
         BibDatabaseContext databaseContext = pr.getDatabaseContext();
         BibDatabase dataBase = pr.getDatabase();
 
+        SearchPreferences searchPreferences = new SearchPreferences(Globals.prefs);
         SearchQuery query = new SearchQuery(searchTerm,
-                Globals.prefs.getBoolean(JabRefPreferences.SEARCH_CASE_SENSITIVE),
-                Globals.prefs.getBoolean(JabRefPreferences.SEARCH_REG_EXP));
+                searchPreferences.isCaseSensitive(),
+                searchPreferences.isRegularExpression());
         List<BibEntry> matches = new DatabaseSearcher(query, dataBase).getMatches();
 
         //export matches
@@ -239,10 +240,10 @@ public class ArgumentProcessor {
                 // BIB files to open. Other files, and files that could not be opened
                 // as bib, we try to import instead.
                 boolean bibExtension = aLeftOver.toLowerCase(Locale.ENGLISH).endsWith("bib");
-                ParserResult pr = null;
+                ParserResult pr = ParserResult.getNullResult();
                 if (bibExtension) {
-                    pr = OpenDatabase.loadDatabaseOrAutoSave(aLeftOver, false,
-                            ImportFormatPreferences.fromPreferences(Globals.prefs));
+                    pr = OpenDatabase.loadDatabase(aLeftOver,
+                            Globals.prefs.getImportFormatPreferences());
                 }
 
                 if (!bibExtension || (pr.isNullResult())) {
@@ -293,7 +294,8 @@ public class ArgumentProcessor {
                 try {
                     System.out.println(Localization.lang("Saving") + ": " + subName);
                     SavePreferences prefs = SavePreferences.loadForSaveFromPreferences(Globals.prefs);
-                    BibDatabaseWriter databaseWriter = new BibtexDatabaseWriter(FileSaveSession::new);
+                    BibDatabaseWriter<SaveSession> databaseWriter = new BibtexDatabaseWriter<>(
+                            FileSaveSession::new);
                     Defaults defaults = new Defaults(BibDatabaseMode
                             .fromPreference(Globals.prefs.getBoolean(JabRefPreferences.BIBLATEX_DEFAULT_MODE)));
                     SaveSession session = databaseWriter.saveDatabase(new BibDatabaseContext(newBase, defaults),
@@ -337,7 +339,8 @@ public class ArgumentProcessor {
                         SavePreferences prefs = SavePreferences.loadForSaveFromPreferences(Globals.prefs);
                         Defaults defaults = new Defaults(BibDatabaseMode.fromPreference(
                                 Globals.prefs.getBoolean(JabRefPreferences.BIBLATEX_DEFAULT_MODE)));
-                        BibDatabaseWriter databaseWriter = new BibtexDatabaseWriter(FileSaveSession::new);
+                        BibDatabaseWriter<SaveSession> databaseWriter = new BibtexDatabaseWriter<>(
+                                FileSaveSession::new);
                         SaveSession session = databaseWriter.saveDatabase(
                                 new BibDatabaseContext(pr.getDatabase(), pr.getMetaData(), defaults), prefs);
 
@@ -372,7 +375,8 @@ public class ArgumentProcessor {
             }
             BibDatabaseContext databaseContext = pr.getDatabaseContext();
             databaseContext.setDatabaseFile(theFile);
-            Globals.prefs.fileDirForDatabase = databaseContext.getFileDirectory();
+            Globals.prefs.fileDirForDatabase = databaseContext
+                    .getFileDirectory(Globals.prefs.getFileDirectoryPreferences());
             System.out.println(Localization.lang("Exporting") + ": " + data[0]);
             IExportFormat format = ExportFormats.getExportFormat(data[1]);
             if (format == null) {
@@ -399,8 +403,8 @@ public class ArgumentProcessor {
             CustomEntryTypesManager.loadCustomEntryTypes(Globals.prefs);
             Map<String, ExportFormat> customFormats = Globals.prefs.customExports.getCustomExportFormats(Globals.prefs,
                     Globals.journalAbbreviationLoader);
-            LayoutFormatterPreferences layoutPreferences = LayoutFormatterPreferences.fromPreferences(Globals.prefs,
-                    Globals.journalAbbreviationLoader);
+            LayoutFormatterPreferences layoutPreferences = Globals.prefs
+                    .getLayoutFormatterPreferences(Globals.journalAbbreviationLoader);
             SavePreferences savePreferences = SavePreferences.loadForExportFromPreferences(Globals.prefs);
             ExportFormats.initAllExports(customFormats, layoutPreferences, savePreferences);
         } catch (JabRefException ex) {
@@ -413,6 +417,7 @@ public class ArgumentProcessor {
             try {
                 System.out.println(Localization.lang("Setting all preferences to default values."));
                 Globals.prefs.clear();
+                new SharedDatabasePreferences().clear();
             } catch (BackingStoreException e) {
                 System.err.println(Localization.lang("Unable to clear preferences."));
                 LOGGER.error("Unable to clear preferences", e);
@@ -447,8 +452,10 @@ public class ArgumentProcessor {
                 LOGGER.info(Localization.lang("Regenerating BibTeX keys according to metadata"));
                 for (BibEntry entry : database.getEntries()) {
                     // try to make a new label
-                    BibtexKeyPatternUtil.makeLabel(metaData, database, entry,
-                            BibtexKeyPatternPreferences.fromPreferences(Globals.prefs));
+                    BibtexKeyPatternUtil.makeLabel(
+                            metaData.getCiteKeyPattern(Globals.prefs.getBibtexKeyPatternPreferences().getKeyPattern()),
+                            database, entry,
+                            Globals.prefs.getBibtexKeyPatternPreferences());
                 }
             } else {
                 LOGGER.info(Localization.lang("No meta data present in BIB_file. Cannot regenerate BibTeX keys"));

@@ -1,6 +1,7 @@
 package net.sf.jabref.logic.importer.fileformat;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.Charset;
@@ -11,9 +12,11 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import net.sf.jabref.logic.importer.FetcherException;
 import net.sf.jabref.logic.importer.ImportFormatPreferences;
+import net.sf.jabref.logic.importer.Importer;
 import net.sf.jabref.logic.importer.ParserResult;
-import net.sf.jabref.logic.importer.fetcher.DOItoBibTeX;
+import net.sf.jabref.logic.importer.fetcher.DoiFetcher;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.logic.util.DOI;
 import net.sf.jabref.logic.util.FileExtensions;
@@ -35,7 +38,7 @@ import org.apache.pdfbox.util.PDFTextStripper;
  * <p>
  * Integrating XMP support is future work
  */
-public class PdfContentImporter extends ImportFormat {
+public class PdfContentImporter extends Importer {
 
     private static final Pattern YEAR_EXTRACT_PATTERN = Pattern.compile("\\d{4}");
 
@@ -199,14 +202,14 @@ public class PdfContentImporter extends ImportFormat {
     @Override
     public ParserResult importDatabase(Path filePath, Charset defaultEncoding) {
         final ArrayList<BibEntry> result = new ArrayList<>(1);
-        try (PDDocument document = XMPUtil.loadWithAutomaticDecryption(filePath)) {
+        try (FileInputStream fileStream = new FileInputStream(filePath.toFile());
+                PDDocument document = XMPUtil.loadWithAutomaticDecryption(fileStream)) {
             String firstPageContents = getFirstPageContents(document);
 
             Optional<DOI> doi = DOI.findInText(firstPageContents);
             if (doi.isPresent()) {
                 ParserResult parserResult = new ParserResult(result);
-                Optional<BibEntry> entry = DOItoBibTeX.getEntryFromDOI(doi.get().getDOI(), parserResult,
-                        importFormatPreferences);
+                Optional<BibEntry> entry = new DoiFetcher(importFormatPreferences).performSearchById(doi.get().getDOI());
                 entry.ifPresent(parserResult.getDatabase()::insertEntry);
                 return parserResult;
             }
@@ -477,6 +480,8 @@ public class PdfContentImporter extends ImportFormat {
             return ParserResult.fromErrorMessage(Localization.lang("Decryption not supported."));
         } catch(IOException exception) {
             return ParserResult.fromErrorMessage(exception.getLocalizedMessage());
+        } catch (FetcherException e) {
+            return ParserResult.fromErrorMessage(e.getMessage());
         }
 
         return new ParserResult(result);
@@ -581,7 +586,7 @@ public class PdfContentImporter extends ImportFormat {
     }
 
     @Override
-    public String getFormatName() {
+    public String getName() {
         return "PDFcontent";
     }
 

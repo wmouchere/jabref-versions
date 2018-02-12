@@ -8,6 +8,8 @@ import java.util.Optional;
 import net.sf.jabref.logic.formatter.bibtexfields.ClearFormatter;
 import net.sf.jabref.logic.util.DOI;
 import net.sf.jabref.model.FieldChange;
+import net.sf.jabref.model.cleanup.CleanupJob;
+import net.sf.jabref.model.cleanup.FieldFormatterCleanup;
 import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.model.entry.FieldName;
 
@@ -28,7 +30,7 @@ public class DoiCleanup implements CleanupJob {
 
         // First check if the Doi Field is empty
         if (entry.hasField(FieldName.DOI)) {
-            String doiFieldValue = entry.getFieldOptional(FieldName.DOI).orElse(null);
+            String doiFieldValue = entry.getField(FieldName.DOI).orElse(null);
 
             Optional<DOI> doi = DOI.build(doiFieldValue);
 
@@ -43,18 +45,18 @@ public class DoiCleanup implements CleanupJob {
 
                 // Doi field seems to contain Doi -> cleanup note, url, ee field
                 for (String field : FIELDS) {
-                    entry.getFieldOptional(field).flatMap(DOI::build)
+                    entry.getField(field).flatMap(DOI::build)
                             .ifPresent(unused -> removeFieldValue(entry, field, changes));
                 }
             }
         } else {
             // As the Doi field is empty we now check if note, url, or ee field contains a Doi
             for (String field : FIELDS) {
-                Optional<DOI> doi = entry.getFieldOptional(field).flatMap(DOI::build);
+                Optional<DOI> doi = entry.getField(field).flatMap(DOI::build);
 
                 if (doi.isPresent()) {
                     // update Doi
-                    String oldValue = entry.getFieldOptional(FieldName.DOI).orElse(null);
+                    String oldValue = entry.getField(FieldName.DOI).orElse(null);
                     String newValue = doi.get().getDOI();
 
                     entry.setField(FieldName.DOI, newValue);

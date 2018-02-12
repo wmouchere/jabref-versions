@@ -12,7 +12,6 @@ import net.sf.jabref.logic.exporter.ExportFormat;
 import net.sf.jabref.logic.exporter.ExportFormats;
 import net.sf.jabref.logic.exporter.SavePreferences;
 import net.sf.jabref.logic.formatter.casechanger.ProtectTermsFormatter;
-import net.sf.jabref.logic.importer.ImportFormatPreferences;
 import net.sf.jabref.logic.journals.JournalAbbreviationLoader;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.logic.layout.LayoutFormatterPreferences;
@@ -20,11 +19,10 @@ import net.sf.jabref.logic.net.ProxyAuthenticator;
 import net.sf.jabref.logic.net.ProxyPreferences;
 import net.sf.jabref.logic.net.ProxyRegisterer;
 import net.sf.jabref.logic.protectedterms.ProtectedTermsLoader;
-import net.sf.jabref.logic.protectedterms.ProtectedTermsPreferences;
 import net.sf.jabref.logic.remote.RemotePreferences;
 import net.sf.jabref.logic.remote.client.RemoteListenerClient;
 import net.sf.jabref.logic.util.OS;
-import net.sf.jabref.logic.xmp.XMPPreferences;
+import net.sf.jabref.migrations.PreferencesMigrations;
 import net.sf.jabref.model.entry.InternalBibtexFields;
 import net.sf.jabref.preferences.JabRefPreferences;
 
@@ -44,7 +42,7 @@ public class JabRefMain {
     private static void start(String[] args) {
         JabRefPreferences preferences = JabRefPreferences.getInstance();
 
-        ProxyPreferences proxyPreferences = ProxyPreferences.loadFromPreferences(preferences);
+        ProxyPreferences proxyPreferences = preferences.getProxyPreferences();
         ProxyRegisterer.register(proxyPreferences);
         if (proxyPreferences.isUseProxy() && proxyPreferences.isUseAuthentication()) {
             Authenticator.setDefault(new ProxyAuthenticator());
@@ -54,6 +52,12 @@ public class JabRefMain {
         Globals.prefs = preferences;
         Localization.setLanguage(preferences.get(JabRefPreferences.LANGUAGE));
         Globals.prefs.setLanguageDependentDefaultValues();
+
+        // Perform Migrations
+        // Perform checks and changes for users with a preference set from an older JabRef version.
+        PreferencesMigrations.upgradeSortOrder();
+        PreferencesMigrations.upgradeFaultyEncodingStrings();
+        PreferencesMigrations.upgradeLabelPatternToBibtexKeyPattern();
 
         // Update handling of special fields based on preferences
         InternalBibtexFields
@@ -67,23 +71,22 @@ public class JabRefMain {
         Globals.journalAbbreviationLoader = new JournalAbbreviationLoader();
 
         /* Build list of Import and Export formats */
-        Globals.IMPORT_FORMAT_READER.resetImportFormats(ImportFormatPreferences.fromPreferences(Globals.prefs),
-                XMPPreferences.fromPreferences(Globals.prefs));
+        Globals.IMPORT_FORMAT_READER.resetImportFormats(Globals.prefs.getImportFormatPreferences(),
+                Globals.prefs.getXMPPreferences());
         CustomEntryTypesManager.loadCustomEntryTypes(preferences);
         Map<String, ExportFormat> customFormats = Globals.prefs.customExports.getCustomExportFormats(Globals.prefs,
                 Globals.journalAbbreviationLoader);
-        LayoutFormatterPreferences layoutPreferences = LayoutFormatterPreferences.fromPreferences(Globals.prefs,
-                Globals.journalAbbreviationLoader);
+        LayoutFormatterPreferences layoutPreferences = Globals.prefs
+                .getLayoutFormatterPreferences(Globals.journalAbbreviationLoader);
         SavePreferences savePreferences = SavePreferences.loadForExportFromPreferences(Globals.prefs);
         ExportFormats.initAllExports(customFormats, layoutPreferences, savePreferences);
 
         // Initialize protected terms loader
-        Globals.protectedTermsLoader = new ProtectedTermsLoader(
-                ProtectedTermsPreferences.fromPreferences(Globals.prefs));
+        Globals.protectedTermsLoader = new ProtectedTermsLoader(Globals.prefs.getProtectedTermsPreferences());
         ProtectTermsFormatter.setProtectedTermsLoader(Globals.protectedTermsLoader);
 
         // Check for running JabRef
-        RemotePreferences remotePreferences = new RemotePreferences(Globals.prefs);
+        RemotePreferences remotePreferences = Globals.prefs.getRemotePreferences();
         if (remotePreferences.useRemoteServer()) {
             Globals.REMOTE_LISTENER.open(new JabRefMessageHandler(), remotePreferences.getPort());
 

@@ -5,7 +5,6 @@ import java.awt.GridLayout;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.ConnectException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -31,7 +30,6 @@ import net.sf.jabref.logic.formatter.bibtexfields.HtmlToLatexFormatter;
 import net.sf.jabref.logic.formatter.bibtexfields.UnitsToLatexFormatter;
 import net.sf.jabref.logic.formatter.casechanger.ProtectTermsFormatter;
 import net.sf.jabref.logic.help.HelpFile;
-import net.sf.jabref.logic.importer.ImportFormatPreferences;
 import net.sf.jabref.logic.importer.ImportInspector;
 import net.sf.jabref.logic.importer.OutputPrinter;
 import net.sf.jabref.logic.importer.fileformat.BibtexParser;
@@ -139,8 +137,7 @@ public class ACMPortalFetcher implements PreviewEntryFetcher {
             }
 
             if (hits == 0) {
-                status.showMessage(Localization.lang("No entries found for the search string '%0'",
-                        terms),
+                status.showMessage(Localization.lang("No entries found for the search string '%0'", terms),
                         Localization.lang("Search %0", getTitle()), JOptionPane.INFORMATION_MESSAGE);
                 return false;
             } else if (hits > 20) {
@@ -158,19 +155,11 @@ public class ACMPortalFetcher implements PreviewEntryFetcher {
 
             return true;
 
-        } catch (MalformedURLException e) {
-            LOGGER.warn("Problem with ACM fetcher URL", e);
-        } catch (ConnectException e) {
-            status.showMessage(Localization.lang("Could not connect to %0", getTitle()),
-                    Localization.lang("Search %0", getTitle()), JOptionPane.ERROR_MESSAGE);
-            LOGGER.warn("Problem with ACM connection", e);
         } catch (IOException e) {
-            status.showMessage(e.getMessage(),
-                    Localization.lang("Search %0", getTitle()), JOptionPane.ERROR_MESSAGE);
-            LOGGER.warn("Problem with ACM Portal", e);
+            LOGGER.error("Error while fetching from " + getTitle(), e);
+            preview.showErrorMessage(this.getTitle(), e.getLocalizedMessage());
+            return false;
         }
-        return false;
-
     }
 
     @Override
@@ -182,7 +171,7 @@ public class ACMPortalFetcher implements PreviewEntryFetcher {
             if (selentry.getValue()) {
                 downloadEntryBibTeX(selentry.getKey(), fetchAbstract).ifPresent(entry ->  {
                     // Convert from HTML and optionally add curly brackets around key words to keep the case
-                    entry.getFieldOptional(FieldName.TITLE).ifPresent(title -> {
+                    entry.getField(FieldName.TITLE).ifPresent(title -> {
                         title = title.replace("\\&", "&").replace("\\#", "#");
                         title = convertHTMLChars(title);
 
@@ -198,7 +187,7 @@ public class ACMPortalFetcher implements PreviewEntryFetcher {
                         entry.setField(FieldName.TITLE, title);
                     });
 
-                    entry.getFieldOptional(FieldName.ABSTRACT)
+                    entry.getField(FieldName.ABSTRACT)
                             .ifPresent(abstr -> entry.setField(FieldName.ABSTRACT, convertHTMLChars(abstr)));
                     inspector.addEntry(entry);
                 });
@@ -324,7 +313,7 @@ public class ACMPortalFetcher implements PreviewEntryFetcher {
             Collection<BibEntry> items = null;
             try (BufferedReader in = new BufferedReader(
                     new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                items = BibtexParser.parse(in, ImportFormatPreferences.fromPreferences(Globals.prefs)).getDatabase()
+                items = BibtexParser.parse(in, Globals.prefs.getImportFormatPreferences()).getDatabase()
                         .getEntries();
             } catch (IOException e) {
                 LOGGER.info("Download of BibTeX information from ACM Portal failed.", e);
@@ -388,9 +377,8 @@ public class ACMPortalFetcher implements PreviewEntryFetcher {
                 } catch (NumberFormatException ex) {
                     throw new IOException("Cannot parse number of hits");
                 }
-            } else {
-                LOGGER.info("Unmatched! " + substring);
             }
+            LOGGER.info("Unmatched! " + substring);
         }
         throw new IOException("Cannot parse number of hits");
     }

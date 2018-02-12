@@ -26,7 +26,6 @@ import net.sf.jabref.Globals;
 import net.sf.jabref.gui.JabRefFrame;
 import net.sf.jabref.gui.help.HelpAction;
 import net.sf.jabref.gui.keyboard.KeyBinding;
-import net.sf.jabref.gui.util.FocusRequester;
 import net.sf.jabref.gui.util.GUIUtil;
 import net.sf.jabref.logic.exporter.SavePreferences;
 import net.sf.jabref.logic.help.HelpFile;
@@ -80,7 +79,7 @@ public class ExportCustomizationDialog extends JDialog {
             if (ecd.okPressed()) {
                 List<String> newFormat = Arrays.asList(ecd.name(), ecd.layoutFile(), ecd.extension());
                 Globals.prefs.customExports.addFormat(newFormat,
-                        LayoutFormatterPreferences.fromPreferences(Globals.prefs, Globals.journalAbbreviationLoader),
+                        Globals.prefs.getLayoutFormatterPreferences(Globals.journalAbbreviationLoader),
                         SavePreferences.loadForExportFromPreferences(Globals.prefs));
                 Globals.prefs.customExports.store(Globals.prefs);
             }
@@ -115,7 +114,8 @@ public class ExportCustomizationDialog extends JDialog {
             for (int i = 0; i < rows.length; i++) {
                 entries.add(Globals.prefs.customExports.getSortedList().get(rows[i]));
             }
-            LayoutFormatterPreferences layoutPreferences = LayoutFormatterPreferences.fromPreferences(Globals.prefs, Globals.journalAbbreviationLoader);
+            LayoutFormatterPreferences layoutPreferences = Globals.prefs
+                    .getLayoutFormatterPreferences(Globals.journalAbbreviationLoader);
             SavePreferences savePreferences = SavePreferences.loadForExportFromPreferences(Globals.prefs);
             for (List<String> list : entries) {
                 Globals.prefs.customExports.remove(list, layoutPreferences, savePreferences);
@@ -160,7 +160,7 @@ public class ExportCustomizationDialog extends JDialog {
         getContentPane().add(buttons, BorderLayout.SOUTH);
         pack();
         setLocationRelativeTo(frame);
-        new FocusRequester(table);
+        table.requestFocus();
     }
 
 

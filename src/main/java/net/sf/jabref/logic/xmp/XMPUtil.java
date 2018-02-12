@@ -30,9 +30,9 @@ import net.sf.jabref.model.database.BibDatabaseMode;
 import net.sf.jabref.model.entry.Author;
 import net.sf.jabref.model.entry.AuthorList;
 import net.sf.jabref.model.entry.BibEntry;
-import net.sf.jabref.model.entry.EntryUtil;
 import net.sf.jabref.model.entry.FieldName;
 import net.sf.jabref.model.entry.MonthUtil;
+import net.sf.jabref.model.strings.StringUtil;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -121,10 +121,6 @@ public class XMPUtil {
             result = XMPUtil.readXMP(inputStream, xmpPreferences);
         }
         return result;
-    }
-
-    public static PDDocument loadWithAutomaticDecryption(Path filePath) throws IOException {
-        return loadWithAutomaticDecryption(new FileInputStream(filePath.toFile()));
     }
 
     public static PDDocument loadWithAutomaticDecryption(InputStream inputStream) throws IOException {
@@ -264,7 +260,7 @@ public class XMPUtil {
             if (key.startsWith("bibtex/")) {
                 String value = dict.getString(key);
                 key = key.substring("bibtex/".length());
-                if ("entrytype".equals(key)) {
+                if (BibEntry.TYPE_HEADER.equals(key)) {
                     entry.setType(value);
                 } else {
                     entry.setField(key, value);
@@ -993,7 +989,7 @@ public class XMPUtil {
                 di.setCustomMetadataValue("bibtex/" + fieldName, fieldContent);
             }
         }
-        di.setCustomMetadataValue("bibtex/entrytype", EntryUtil.capitalizeFirst(resolvedEntry.getType()));
+        di.setCustomMetadataValue("bibtex/entrytype", StringUtil.capitalizeFirst(resolvedEntry.getType()));
     }
 
     /**

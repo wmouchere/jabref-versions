@@ -2,11 +2,8 @@ package net.sf.jabref.gui.importer.fetcher;
 
 import java.awt.BorderLayout;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.CookieHandler;
 import java.net.CookieManager;
-import java.net.MalformedURLException;
-import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,16 +19,15 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import net.sf.jabref.Globals;
+import net.sf.jabref.gui.importer.ImportInspectionDialog;
 import net.sf.jabref.logic.formatter.bibtexfields.HtmlToLatexFormatter;
 import net.sf.jabref.logic.formatter.bibtexfields.UnitsToLatexFormatter;
 import net.sf.jabref.logic.formatter.casechanger.ProtectTermsFormatter;
 import net.sf.jabref.logic.help.HelpFile;
-import net.sf.jabref.logic.importer.ImportFormatPreferences;
 import net.sf.jabref.logic.importer.ImportInspector;
 import net.sf.jabref.logic.importer.OutputPrinter;
 import net.sf.jabref.logic.importer.fileformat.BibtexParser;
 import net.sf.jabref.logic.journals.JournalAbbreviationLoader;
-import net.sf.jabref.logic.journals.JournalAbbreviationPreferences;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.logic.net.URLDownload;
 import net.sf.jabref.model.entry.BibEntry;
@@ -151,12 +147,7 @@ public class IEEEXploreFetcher implements EntryFetcher {
 
             //parse the page into Bibtex entries
             Collection<BibEntry> parsedBibtexCollection = BibtexParser.fromString(bibtexPage,
-                    ImportFormatPreferences.fromPreferences(Globals.prefs));
-            if (parsedBibtexCollection == null) {
-                status.showMessage(Localization.lang("Error while fetching from %0", getTitle()),
-                        DIALOG_TITLE, JOptionPane.INFORMATION_MESSAGE);
-                return false;
-            }
+                    Globals.prefs.getImportFormatPreferences());
             int nEntries = parsedBibtexCollection.size();
             Iterator<BibEntry> parsedBibtexCollectionIterator = parsedBibtexCollection.iterator();
             while (parsedBibtexCollectionIterator.hasNext() && shouldContinue) {
@@ -167,14 +158,9 @@ public class IEEEXploreFetcher implements EntryFetcher {
 
             return true;
 
-        } catch (MalformedURLException e) {
-            LOGGER.warn("Bad URL", e);
-        } catch (ConnectException | UnknownHostException e) {
-            status.showMessage(Localization.lang("Could not connect to %0", getTitle()), DIALOG_TITLE,
-                    JOptionPane.ERROR_MESSAGE);
         } catch (IOException | JSONException e) {
-            status.showMessage(e.getMessage(), DIALOG_TITLE, JOptionPane.ERROR_MESSAGE);
-            LOGGER.warn("Search IEEEXplore: " + e.getMessage(), e);
+            LOGGER.error("Error while fetching from " + getTitle(), e);
+            ((ImportInspectionDialog)dialog).showErrorMessage(this.getTitle(), e.getLocalizedMessage());
         }
 
         return false;
@@ -257,9 +243,9 @@ public class IEEEXploreFetcher implements EntryFetcher {
         }
 
         // clean up title
-        entry.getFieldOptional(FieldName.TITLE).ifPresent(title -> {
+        entry.getField(FieldName.TITLE).ifPresent(dirtyTitle -> {
             // USe the alt-text and replace image links
-            title = title.replaceAll("[ ]?img src=[^ ]+ alt=\"([^\"]+)\">[ ]?", "\\$$1\\$");
+            String title = dirtyTitle.replaceAll("[ ]?img src=[^ ]+ alt=\"([^\"]+)\">[ ]?", "\\$$1\\$");
             // Try to sort out most of the /spl / conversions
             // Deal with this specific nested type first
             title = title.replaceAll("/sub /spl infin//", "\\$_\\\\infty\\$");
@@ -289,8 +275,8 @@ public class IEEEXploreFetcher implements EntryFetcher {
         });
 
         // clean up author
-        entry.getFieldOptional(FieldName.AUTHOR).ifPresent(author -> {
-            author = author.replaceAll("\\s+", " ");
+        entry.getField(FieldName.AUTHOR).ifPresent(dirtyAuthor -> {
+            String author = dirtyAuthor.replaceAll("\\s+", " ");
 
             //reorder the "Jr." "Sr." etc to the correct ordering
             String[] authorSplit = author.split("(^\\s*|\\s*$|\\s+and\\s+)");
@@ -308,8 +294,8 @@ public class IEEEXploreFetcher implements EntryFetcher {
         });
 
         // clean up month
-        entry.getFieldOptional(FieldName.MONTH).filter(month -> !month.isEmpty()).ifPresent(month -> {
-            month = month.replace(".", "");
+        entry.getField(FieldName.MONTH).filter(month -> !month.isEmpty()).ifPresent(dirtyMonth -> {
+            String month = dirtyMonth.replace(".", "");
             month = month.toLowerCase();
 
             Matcher mm = MONTH_PATTERN.matcher(month);
@@ -341,7 +327,7 @@ public class IEEEXploreFetcher implements EntryFetcher {
         });
 
         // clean up pages
-        entry.getFieldOptional(FieldName.PAGES).ifPresent(pages -> {
+        entry.getField(FieldName.PAGES).ifPresent(pages -> {
             String[] pageNumbers = pages.split("-");
             if (pageNumbers.length == 2) {
                 if (pageNumbers[0].equals(pageNumbers[1])) {// single page
@@ -362,7 +348,7 @@ public class IEEEXploreFetcher implements EntryFetcher {
             sourceField = FieldName.BOOKTITLE;
         }
         if (entry.hasField(sourceField)) {
-            String fullName = entry.getFieldOptional(sourceField).get();
+            String fullName = entry.getField(sourceField).get();
             if ("article".equals(type)) {
                 int ind = fullName.indexOf(": Accepted for future publication");
                 if (ind > 0) {
@@ -377,7 +363,7 @@ public class IEEEXploreFetcher implements EntryFetcher {
                 if (parts.length == 3) {
                     fullName += parts[2];
                 }
-                entry.getFieldOptional(FieldName.NOTE).filter(note -> "Early Access".equals(note)).ifPresent(note -> {
+                entry.getField(FieldName.NOTE).filter(note -> "Early Access".equals(note)).ifPresent(note -> {
                     entry.setField(FieldName.YEAR, "to be published");
                     entry.clearField(FieldName.MONTH);
                     entry.clearField(FieldName.PAGES);
@@ -421,7 +407,7 @@ public class IEEEXploreFetcher implements EntryFetcher {
                 fullName = fullName.trim();
                 if (Globals.prefs.getBoolean(JabRefPreferences.USE_IEEE_ABRV)) {
                     fullName = abbreviationLoader
-                            .getRepository(JournalAbbreviationPreferences.fromPreferences(Globals.prefs))
+                            .getRepository(Globals.prefs.getJournalAbbreviationPreferences())
                             .getMedlineAbbreviation(fullName)
                             .orElse(fullName);
                 }
@@ -455,7 +441,7 @@ public class IEEEXploreFetcher implements EntryFetcher {
                 fullName = fullName.trim();
 
                 fullName = fullName.replaceAll("^[tT]he ", "").replaceAll("^\\d{4} ", "").replaceAll("[,.]$", "");
-                Optional<String> year = entry.getFieldOptional(FieldName.YEAR);
+                Optional<String> year = entry.getField(FieldName.YEAR);
                 if (year.isPresent()) {
                     fullName = fullName.replaceAll(", " + year.get() + "\\.?", "");
                 }
@@ -469,10 +455,10 @@ public class IEEEXploreFetcher implements EntryFetcher {
         }
 
         // clean up abstract
-        entry.getFieldOptional(FieldName.ABSTRACT).ifPresent(abstr -> {
+        entry.getField(FieldName.ABSTRACT).ifPresent(dirtyAbstr -> {
             // Try to sort out most of the /spl / conversions
             // Deal with this specific nested type first
-            abstr = abstr.replaceAll("/sub /spl infin//", "\\$_\\\\infty\\$");
+            String abstr = dirtyAbstr.replaceAll("/sub /spl infin//", "\\$_\\\\infty\\$");
             abstr = abstr.replaceAll("/sup /spl infin//", "\\$\\^\\\\infty\\$");
             // Replace general expressions
             abstr = abstr.replaceAll("/[sS]pl ([^/]+)/", "\\$\\\\$1\\$");
@@ -488,11 +474,11 @@ public class IEEEXploreFetcher implements EntryFetcher {
         });
 
         // Clean up url
-        entry.getFieldOptional(FieldName.URL)
+        entry.getField(FieldName.URL)
                 .ifPresent(url -> entry.setField(FieldName.URL, "http://ieeexplore.ieee.org" + url.replace("tp=&", "")));
 
         // Replace ; as keyword separator
-        entry.getFieldOptional(FieldName.KEYWORDS).ifPresent(keys -> entry.setField(FieldName.KEYWORDS,
+        entry.getField(FieldName.KEYWORDS).ifPresent(keys -> entry.setField(FieldName.KEYWORDS,
                 keys.replace(";", Globals.prefs.get(JabRefPreferences.KEYWORD_SEPARATOR))));
         return entry;
     }

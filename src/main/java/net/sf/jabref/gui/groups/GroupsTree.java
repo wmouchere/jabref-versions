@@ -34,11 +34,11 @@ import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
 import net.sf.jabref.gui.util.GUIUtil;
-import net.sf.jabref.logic.groups.AbstractGroup;
-import net.sf.jabref.logic.groups.EntriesGroupChange;
-import net.sf.jabref.logic.groups.GroupTreeNode;
-import net.sf.jabref.logic.groups.MoveGroupChange;
 import net.sf.jabref.model.entry.BibEntry;
+import net.sf.jabref.model.groups.AbstractGroup;
+import net.sf.jabref.model.groups.EntriesGroupChange;
+import net.sf.jabref.model.groups.GroupTreeNode;
+import net.sf.jabref.model.groups.MoveGroupChange;
 
 public class GroupsTree extends JTree implements DragSourceListener,
         DropTargetListener, DragGestureListener {
@@ -168,7 +168,7 @@ public class GroupsTree extends JTree implements DragSourceListener,
         } else if (dtde
                 .isDataFlavorSupported(TransferableEntrySelection.FLAVOR_INTERNAL)) {
             // check if node accepts explicit assignment
-            if (path == null) {
+            if (target == null) {
                 dtde.rejectDrag();
             } else {
                 // this would be the place to check if the dragging entries
