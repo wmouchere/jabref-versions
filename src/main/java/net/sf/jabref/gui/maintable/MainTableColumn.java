@@ -1,7 +1,12 @@
 package net.sf.jabref.gui.maintable;
 
+import net.sf.jabref.bibtex.FieldProperties;
+import net.sf.jabref.bibtex.InternalBibtexFields;
+import net.sf.jabref.logic.layout.LayoutFormatter;
+import net.sf.jabref.logic.layout.format.LatexToUnicodeFormatter;
 import net.sf.jabref.model.database.BibDatabase;
 import net.sf.jabref.model.entry.BibEntry;
+import net.sf.jabref.model.entry.EntryUtil;
 import javax.swing.*;
 import java.util.*;
 
@@ -17,6 +22,8 @@ public class MainTableColumn {
 
     private final Optional<BibDatabase> database;
 
+    private final LayoutFormatter toUnicode = new LatexToUnicodeFormatter();
+
     public MainTableColumn(String columnName) {
         this.columnName = columnName;
         this.bibtexFields = Collections.emptyList();
@@ -25,17 +32,17 @@ public class MainTableColumn {
         this.database = Optional.empty();
     }
 
-    public MainTableColumn(String columnName, String[] bibtexFields, BibDatabase database) {
+    public MainTableColumn(String columnName, List<String> bibtexFields, BibDatabase database) {
         this.columnName = columnName;
-        this.bibtexFields = Collections.unmodifiableList(Arrays.asList(bibtexFields));
+        this.bibtexFields = Collections.unmodifiableList(bibtexFields);
         this.isIconColumn = false;
         this.iconLabel = Optional.empty();
         this.database = Optional.of(database);
     }
 
-    public MainTableColumn(String columnName, String[] bibtexFields, JLabel iconLabel) {
+    public MainTableColumn(String columnName, List<String> bibtexFields, JLabel iconLabel) {
         this.columnName = columnName;
-        this.bibtexFields = Collections.unmodifiableList(Arrays.asList(bibtexFields));
+        this.bibtexFields = Collections.unmodifiableList(bibtexFields);
         this.isIconColumn = true;
         this.iconLabel = Optional.of(iconLabel);
         this.database = Optional.empty();
@@ -65,7 +72,12 @@ public class MainTableColumn {
      * @return true if the bibtex fields contains author or editor
      */
     public boolean isNameColumn() {
-        return bibtexFields.contains("author") || bibtexFields.contains("editor");
+        for (String field : bibtexFields) {
+            if (InternalBibtexFields.getFieldExtras(field).contains(FieldProperties.PERSON_NAMES)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public String getColumnName() {
@@ -92,7 +104,7 @@ public class MainTableColumn {
         String content = null;
         for (String field : bibtexFields) {
             if (field.equals(BibEntry.TYPE_HEADER)) {
-                content = entry.getType().getName();
+                content = EntryUtil.capitalizeFirst(entry.getType());
             } else {
                 content = entry.getFieldOrAlias(field);
                 if (database.isPresent() && "Author".equalsIgnoreCase(columnName) && (content != null)) {
@@ -102,6 +114,10 @@ public class MainTableColumn {
             if (content != null) {
                 break;
             }
+        }
+
+        if (content != null) {
+            content = toUnicode.format(content);
         }
 
         if (isNameColumn()) {

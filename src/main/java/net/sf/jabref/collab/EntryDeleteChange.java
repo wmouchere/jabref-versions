@@ -15,21 +15,20 @@
  */
 package net.sf.jabref.collab;
 
-import javax.swing.JComponent;
-import javax.swing.JScrollPane;
+import javax.swing.*;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import net.sf.jabref.*;
+import net.sf.jabref.Globals;
+import net.sf.jabref.JabRefPreferences;
 import net.sf.jabref.gui.BasePanel;
 import net.sf.jabref.gui.PreviewPanel;
 import net.sf.jabref.gui.undo.NamedCompound;
 import net.sf.jabref.gui.undo.UndoableRemoveEntry;
 import net.sf.jabref.logic.l10n.Localization;
-import net.sf.jabref.bibtex.DuplicateCheck;
+import net.sf.jabref.model.DuplicateCheck;
 import net.sf.jabref.model.database.BibDatabase;
 import net.sf.jabref.model.entry.BibEntry;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 class EntryDeleteChange extends Change {
 
@@ -54,14 +53,14 @@ class EntryDeleteChange extends Change {
 
         LOGGER.debug("Modified entry: " + memEntry.getCiteKey() + "\n Modified locally: " + isModifiedLocally);
 
-        PreviewPanel pp = new PreviewPanel(null, memEntry, null, new MetaData(), Globals.prefs.get(JabRefPreferences.PREVIEW_0));
+        PreviewPanel pp = new PreviewPanel(null, memEntry, null, Globals.prefs.get(JabRefPreferences.PREVIEW_0));
         sp = new JScrollPane(pp);
     }
 
     @Override
     public boolean makeChange(BasePanel panel, BibDatabase secondary, NamedCompound undoEdit) {
-        panel.database().removeEntry(memEntry);
-        undoEdit.addEdit(new UndoableRemoveEntry(panel.database(), memEntry, panel));
+        panel.getDatabase().removeEntry(memEntry);
+        undoEdit.addEdit(new UndoableRemoveEntry(panel.getDatabase(), memEntry, panel));
         secondary.removeEntry(tmpEntry);
         return true;
     }

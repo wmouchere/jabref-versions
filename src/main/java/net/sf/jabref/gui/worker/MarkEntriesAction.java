@@ -25,8 +25,12 @@ import net.sf.jabref.model.entry.BibEntry;
 
 import javax.swing.*;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.List;
 
 /**
  *
@@ -38,12 +42,13 @@ public class MarkEntriesAction extends AbstractWorker implements ActionListener 
     private final JMenuItem menuItem;
     private int besLength;
 
+    private static final Log LOGGER = LogFactory.getLog(MarkEntriesAction.class);
 
     public MarkEntriesAction(JabRefFrame frame, int level) {
         this.frame = frame;
         this.level = level;
 
-        //menuItem = new JMenuItem(Globals.menuTitle("Mark entries").replaceAll("&",""));
+        //menuItem = new JMenuItem(Globals.menuTitle("Mark entries").replace("&",""));
         menuItem = new JMenuItem("               ");
         menuItem.setMnemonic(String.valueOf(level + 1).charAt(0));
         menuItem.setBackground(Globals.prefs.getColor(JabRefPreferences.MARKED_ENTRY_BACKGROUND + this.level));
@@ -62,19 +67,19 @@ public class MarkEntriesAction extends AbstractWorker implements ActionListener 
             getWorker().run();
             getCallBack().update();
         } catch (Throwable t) {
-            t.printStackTrace();
+            LOGGER.warn("Problem marking entries", t);
         }
     }
 
     @Override
     public void run() {
         BasePanel panel = frame.getCurrentBasePanel();
-        BibEntry[] bes = panel.getSelectedEntries();
+        List<BibEntry> bes = panel.getSelectedEntries();
 
         // used at update() to determine output string
-        besLength = bes.length;
+        besLength = bes.size();
 
-        if (bes.length != 0) {
+        if (!bes.isEmpty()) {
             NamedCompound ce = new NamedCompound(Localization.lang("Mark entries"));
             for (BibEntry be : bes) {
                 EntryMarker.markEntry(be, level + 1, false, ce);
@@ -89,7 +94,7 @@ public class MarkEntriesAction extends AbstractWorker implements ActionListener 
         String outputStr;
         switch (besLength) {
         case 0:
-            outputStr = Localization.lang("No entries selected.");
+            outputStr = Localization.lang("This operation requires one or more entries to be selected.");
             break;
         case 1:
             frame.getCurrentBasePanel().markBaseChanged();

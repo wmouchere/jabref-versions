@@ -16,6 +16,7 @@
 package net.sf.jabref.importer;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -38,12 +39,11 @@ import net.sf.jabref.gui.undo.NamedCompound;
 import net.sf.jabref.gui.undo.UndoableInsertEntry;
 import net.sf.jabref.gui.undo.UndoableInsertString;
 import net.sf.jabref.model.entry.IdGenerator;
-import net.sf.jabref.gui.util.PositionWindow;
 import net.sf.jabref.logic.l10n.Localization;
+import net.sf.jabref.logic.util.UpdateField;
 import net.sf.jabref.model.database.BibDatabase;
 import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.model.entry.BibtexString;
-import net.sf.jabref.util.Util;
 
 /**
  * Created by IntelliJ IDEA.
@@ -71,14 +71,15 @@ public class AppendDatabaseAction implements BaseAction {
 
         filesToOpen.clear();
         final MergeDialog md = new MergeDialog(frame, Localization.lang("Append database"), true);
-        PositionWindow.placeDialog(md, panel);
+        md.setLocationRelativeTo(panel);
         md.setVisible(true);
         if (md.isOkPressed()) {
-            String[] chosen = FileDialogs.getMultipleFiles(frame, new File(Globals.prefs.get(JabRefPreferences.WORKING_DIRECTORY)),
+            List<String> chosen = FileDialogs.getMultipleFiles(frame,
+                    new File(Globals.prefs.get(JabRefPreferences.WORKING_DIRECTORY)),
                     null, false);
             //String chosenFile = Globals.getNewFile(frame, new File(Globals.prefs.get("workingDirectory")),
             //                                       null, JFileChooser.OPEN_DIALOG, false);
-            if (chosen == null) {
+            if (chosen.isEmpty()) {
                 return;
             }
             for (String aChosen : chosen) {
@@ -115,11 +116,9 @@ public class AppendDatabaseAction implements BaseAction {
                 AppendDatabaseAction.mergeFromBibtex(frame, panel, pr, importEntries, importStrings,
                         importGroups, importSelectorWords);
                 panel.output(Localization.lang("Imported from database") + " '" + file.getPath() + "'");
-            } catch (Throwable ex) {
+            } catch (IOException | KeyCollisionException ex) {
                 LOGGER.warn("Could not open database", ex);
-                JOptionPane.showMessageDialog
-                (panel, ex.getMessage(),
- Localization.lang("Open database"),
+                JOptionPane.showMessageDialog(panel, ex.getMessage(), Localization.lang("Open database"),
                         JOptionPane.ERROR_MESSAGE);
             }
         }
@@ -133,8 +132,8 @@ public class AppendDatabaseAction implements BaseAction {
         BibDatabase fromDatabase = pr.getDatabase();
         ArrayList<BibEntry> appendedEntries = new ArrayList<>();
         ArrayList<BibEntry> originalEntries = new ArrayList<>();
-        BibDatabase database = panel.database();
-        BibEntry originalEntry;
+        BibDatabase database = panel.getDatabase();
+
         NamedCompound ce = new NamedCompound(Localization.lang("Append database"));
         MetaData meta = pr.getMetaData();
 
@@ -142,11 +141,10 @@ public class AppendDatabaseAction implements BaseAction {
             boolean overwriteOwner = Globals.prefs.getBoolean(JabRefPreferences.OVERWRITE_OWNER);
             boolean overwriteTimeStamp = Globals.prefs.getBoolean(JabRefPreferences.OVERWRITE_TIME_STAMP);
 
-            for (String key : fromDatabase.getKeySet()) {
-                originalEntry = fromDatabase.getEntryById(key);
+            for (BibEntry originalEntry : fromDatabase.getEntries()) {
                 BibEntry be = (BibEntry) originalEntry.clone();
                 be.setId(IdGenerator.next());
-                Util.setAutomaticFields(be, overwriteOwner, overwriteTimeStamp);
+                UpdateField.setAutomaticFields(be, overwriteOwner, overwriteTimeStamp);
                 database.insertEntry(be);
                 appendedEntries.add(be);
                 originalEntries.add(originalEntry);
@@ -172,15 +170,13 @@ public class AppendDatabaseAction implements BaseAction {
                     // create a dummy group
                     ExplicitGroup group = new ExplicitGroup("Imported", GroupHierarchyType.INDEPENDENT);
                     newGroups.setGroup(group);
-                    for (BibEntry appendedEntry : appendedEntries) {
-                        group.addEntry(appendedEntry);
-                    }
+                    appendedEntries.stream().map(group::addEntry);
                 }
 
                 // groupsSelector is always created, even when no groups
                 // have been defined. therefore, no check for null is
                 // required here
-                frame.groupSelector.addGroups(newGroups, ce);
+                frame.getGroupSelector().addGroups(newGroups, ce);
                 // for explicit groups, the entries copied to the mother fromDatabase have to
                 // be "reassigned", i.e. the old reference is removed and the reference
                 // to the new fromDatabase is added.
@@ -203,14 +199,14 @@ public class AppendDatabaseAction implements BaseAction {
                         }
                     }
                 }
-                frame.groupSelector.revalidateGroups();
+                frame.getGroupSelector().revalidateGroups();
             }
         }
 
         if (importSelectorWords) {
             for (String s : meta) {
                 if (s.startsWith(Globals.SELECTOR_META_PREFIX)) {
-                    panel.metaData().putData(s, meta.getData(s));
+                    panel.getBibDatabaseContext().getMetaData().putData(s, meta.getData(s));
                 }
             }
         }

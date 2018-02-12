@@ -29,7 +29,6 @@ import net.sf.jabref.gui.keyboard.KeyBinding;
 import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.gui.undo.NamedCompound;
 import net.sf.jabref.gui.undo.UndoableFieldChange;
-import net.sf.jabref.gui.util.PositionWindow;
 import net.sf.jabref.logic.l10n.Localization;
 
 /**
@@ -45,14 +44,14 @@ class ReplaceStringDialog extends JDialog {
     private final JCheckBox selOnly = new JCheckBox(Localization.lang("Limit to selected entries"), false);
     private final JRadioButton allFi = new JRadioButton(Localization.lang("All fields"), true);
     private final JRadioButton field = new JRadioButton(Localization.lang("Limit to fields") + ":", false);
-    private boolean ok_pressed;
+    private boolean okPressed;
     private String[] flds;
     private String s1;
     private String s2;
 
 
-    public ReplaceStringDialog(JabRefFrame parent_) {
-        super(parent_, Localization.lang("Replace string"), true);
+    public ReplaceStringDialog(JabRefFrame parent) {
+        super(parent, Localization.lang("Replace string"), true);
 
         ButtonGroup bg = new ButtonGroup();
         bg.add(allFi);
@@ -66,7 +65,7 @@ class ReplaceStringDialog extends JDialog {
                 if ("".equals(s1)) {
                     return;
                 }
-                ok_pressed = true;
+                okPressed = true;
                 flds = fields.getText().toLowerCase().split(";");
                 dispose();
             }
@@ -185,11 +184,11 @@ class ReplaceStringDialog extends JDialog {
         pack();
         //setSize(400, 170);
 
-        PositionWindow.placeDialog(this, parent_);
+        this.setLocationRelativeTo(parent);
     }
 
     public boolean okPressed() {
-        return ok_pressed;
+        return okPressed;
     }
 
     private boolean allFields() {
@@ -226,11 +225,10 @@ class ReplaceStringDialog extends JDialog {
     }
 
     private int replaceField(BibEntry be, String fieldname, NamedCompound ce) {
-        Object o = be.getField(fieldname);
-        if (o == null) {
+        if (!be.hasField(fieldname)) {
             return 0;
         }
-        String txt = o.toString();
+        String txt = be.getField(fieldname);
         StringBuilder sb = new StringBuilder();
         int ind;
         int piv = 0;

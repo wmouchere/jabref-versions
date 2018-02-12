@@ -18,11 +18,9 @@ package net.sf.jabref.logic.xmp;
 import java.io.IOException;
 import java.util.*;
 
-import javax.xml.transform.TransformerException;
-
 import net.sf.jabref.*;
-
-import net.sf.jabref.bibtex.EntryTypes;
+import net.sf.jabref.bibtex.FieldProperties;
+import net.sf.jabref.bibtex.InternalBibtexFields;
 import net.sf.jabref.model.entry.*;
 import net.sf.jabref.model.database.BibDatabase;
 import org.apache.jempbox.xmp.XMPMetadata;
@@ -41,6 +39,14 @@ public class XMPSchemaBibtex extends XMPSchema {
 
     private static final String KEY = "bibtex";
 
+    private static final Set<String> PRESERVE_WHITE_SPACE = new HashSet<>();
+
+
+    static {
+        XMPSchemaBibtex.PRESERVE_WHITE_SPACE.add("abstract");
+        XMPSchemaBibtex.PRESERVE_WHITE_SPACE.add("note");
+        XMPSchemaBibtex.PRESERVE_WHITE_SPACE.add("review");
+    }
 
     /**
      * Create a new empty XMPSchemaBibtex as a child in the given XMPMetadata.
@@ -82,11 +88,10 @@ public class XMPSchemaBibtex extends XMPSchema {
      * @param value
      */
     public void setPersonList(String field, String value) {
-        AuthorList list = AuthorList.getAuthorList(value);
+        AuthorList list = AuthorList.parse(value);
 
-        int n = list.size();
-        for (int i = 0; i < n; i++) {
-            addSequenceValue(field, list.getAuthor(i).getFirstLast(false));
+        for (Author author : list.getAuthors()) {
+            addSequenceValue(field, author.getFirstLast(false));
         }
     }
 
@@ -249,7 +254,7 @@ public class XMPSchemaBibtex extends XMPSchema {
 
         for (Map.Entry<String, String> entry : result.entrySet()) {
             String key = entry.getKey();
-            if (XMPSchemaBibtex.preserveWhiteSpace.contains(key)) {
+            if (XMPSchemaBibtex.PRESERVE_WHITE_SPACE.contains(key)) {
                 continue;
             }
             entry.setValue(entry.getValue().replaceAll("\\s+", " ").trim());
@@ -258,13 +263,6 @@ public class XMPSchemaBibtex extends XMPSchema {
         return result;
     }
 
-
-    private static final HashSet<String> preserveWhiteSpace = new HashSet<>();
-    static {
-        XMPSchemaBibtex.preserveWhiteSpace.add("abstract");
-        XMPSchemaBibtex.preserveWhiteSpace.add("note");
-        XMPSchemaBibtex.preserveWhiteSpace.add("review");
-    }
 
 
     public void setBibtexEntry(BibEntry entry) {
@@ -288,26 +286,21 @@ public class XMPSchemaBibtex extends XMPSchema {
 
         for (String field : fields) {
             String value = BibDatabase.getResolvedField(field, entry, database);
-            if ("author".equals(field) || "editor".equals(field)) {
+            if (value == null) {
+                value = "";
+            }
+            if (InternalBibtexFields.getFieldExtras(field).contains(FieldProperties.PERSON_NAMES)) {
                 setPersonList(field, value);
             } else {
                 setTextProperty(field, value);
             }
         }
-        setTextProperty("entrytype", entry.getType().getName());
+        setTextProperty("entrytype", entry.getType());
     }
 
     public BibEntry getBibtexEntry() {
-
         String type = getTextProperty("entrytype");
-        EntryType t;
-        if (type != null) {
-            t = EntryTypes.getStandardType(type);
-        } else {
-            t = BibtexEntryTypes.MISC;
-        }
-
-        BibEntry e = new BibEntry(IdGenerator.next(), t);
+        BibEntry e = new BibEntry(IdGenerator.next(), type);
 
         // Get Text Properties
         Map<String, String> text = XMPSchemaBibtex.getAllProperties(this, "bibtex");

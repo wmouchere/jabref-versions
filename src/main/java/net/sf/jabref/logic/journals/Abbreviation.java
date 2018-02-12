@@ -1,6 +1,6 @@
 package net.sf.jabref.logic.journals;
 
-import com.google.common.base.Objects;
+import java.util.Objects;
 
 public class Abbreviation implements Comparable<Abbreviation> {
 
@@ -27,7 +27,7 @@ public class Abbreviation implements Comparable<Abbreviation> {
     }
 
     public String getMedlineAbbreviation() {
-        return getIsoAbbreviation().replaceAll("\\.", " ").replaceAll("  ", " ").trim();
+        return getIsoAbbreviation().replace(".", " ").replace("  ", " ").trim();
     }
 
     @Override
@@ -57,11 +57,11 @@ public class Abbreviation implements Comparable<Abbreviation> {
         if (this == o) {
             return true;
         }
-        if ((o == null) || (getClass() != o.getClass())) {
-            return false;
+        if (o instanceof Abbreviation) {
+            Abbreviation that = (Abbreviation) o;
+            return Objects.equals(name, that.name);
         }
-        Abbreviation that = (Abbreviation) o;
-        return Objects.equal(name, that.name);
+        return false;
     }
 
     @Override

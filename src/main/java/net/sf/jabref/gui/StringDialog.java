@@ -15,63 +15,50 @@
 */
 package net.sf.jabref.gui;
 
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.util.TreeSet;
-
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.ActionMap;
-import javax.swing.DefaultCellEditor;
-import javax.swing.InputMap;
-import javax.swing.JComponent;
-import javax.swing.JDialog;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.JToolBar;
-import javax.swing.LayoutFocusTraversalPolicy;
-import javax.swing.table.AbstractTableModel;
-import javax.swing.table.TableColumnModel;
-import javax.swing.undo.CompoundEdit;
-
-import net.sf.jabref.*;
+import net.sf.jabref.Globals;
+import net.sf.jabref.JabRefPreferences;
+import net.sf.jabref.bibtex.comparator.BibtexStringComparator;
 import net.sf.jabref.exporter.LatexFieldFormatter;
 import net.sf.jabref.gui.actions.Actions;
+import net.sf.jabref.gui.help.HelpFiles;
 import net.sf.jabref.gui.help.HelpAction;
 import net.sf.jabref.gui.keyboard.KeyBinding;
-import net.sf.jabref.model.database.KeyCollisionException;
 import net.sf.jabref.gui.undo.UndoableInsertString;
 import net.sf.jabref.gui.undo.UndoableRemoveString;
 import net.sf.jabref.gui.undo.UndoableStringChange;
 import net.sf.jabref.gui.util.PositionWindow;
-import net.sf.jabref.bibtex.comparator.BibtexStringComparator;
-import net.sf.jabref.model.entry.IdGenerator;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.model.database.BibDatabase;
+import net.sf.jabref.model.database.KeyCollisionException;
 import net.sf.jabref.model.entry.BibtexString;
+import net.sf.jabref.model.entry.IdGenerator;
+
+import javax.swing.*;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableColumnModel;
+import javax.swing.undo.CompoundEdit;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 class StringDialog extends JDialog {
 
     // A reference to the entry this object works on.
     private final BibDatabase base;
     private final BasePanel panel;
-    private Object[] strings;
+    private List<BibtexString> strings;
 
     private final StringTable table;
     private final HelpAction helpAction;
 
-    private final PositionWindow pw;
+    private final SaveDatabaseAction saveAction = new SaveDatabaseAction(this);
+
+    // The action concerned with closing the window.
+    private final CloseAction closeAction = new CloseAction();
+
+    public static final String STRINGS_TITLE = Localization.lang("Strings for database");
 
 
     public StringDialog(JabRefFrame frame, BasePanel panel, BibDatabase base) {
@@ -81,7 +68,7 @@ class StringDialog extends JDialog {
 
         sortStrings();
 
-        helpAction = new HelpAction(frame.helpDiag, GUIGlobals.stringEditorHelp, Localization.lang("Help"));
+        helpAction = new HelpAction(Localization.lang("Help"), HelpFiles.stringEditorHelp);
 
         addWindowListener(new WindowAdapter() {
 
@@ -111,14 +98,14 @@ class StringDialog extends JDialog {
 
         StringTableModel stm = new StringTableModel(this, base);
         table = new StringTable(stm);
-        if (base.getStringCount() > 0) {
+        if (!base.hasNoStrings()) {
             table.setRowSelectionInterval(0, 0);
         }
 
         gbl.setConstraints(table.getPane(), con);
         pan.add(table.getPane());
 
-        JToolBar tlb = new JToolBar();
+        JToolBar tlb = new OSXCompatibleToolbar();
         InputMap im = tlb.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap am = tlb.getActionMap();
         im.put(Globals.getKeyPrefs().getKey(KeyBinding.STRING_DIALOG_ADD_STRING), "add");
@@ -148,30 +135,14 @@ class StringDialog extends JDialog {
         conPane.add(tlb, BorderLayout.NORTH);
         conPane.add(pan, BorderLayout.CENTER);
 
-        if (panel.getDatabaseFile() == null) {
-            setTitle(GUIGlobals.stringsTitle + ": " + GUIGlobals.untitledTitle);
+        if (panel.getBibDatabaseContext().getDatabaseFile() == null) {
+            setTitle(STRINGS_TITLE + ": " + GUIGlobals.UNTITLED_TITLE);
         } else {
-            setTitle(GUIGlobals.stringsTitle + ": " + panel.getDatabaseFile().getName());
+            setTitle(STRINGS_TITLE + ": " + panel.getBibDatabaseContext().getDatabaseFile().getName());
         }
-        pw = new PositionWindow(this, JabRefPreferences.STRINGS_POS_X, JabRefPreferences.STRINGS_POS_Y,
+        PositionWindow pw = new PositionWindow(this, JabRefPreferences.STRINGS_POS_X, JabRefPreferences.STRINGS_POS_Y,
                 JabRefPreferences.STRINGS_SIZE_X, JabRefPreferences.STRINGS_SIZE_Y);
         pw.setWindowPosition();
-
-        // Set up a ComponentListener that saves the last size and position of the dialog
-        addComponentListener(new ComponentAdapter() {
-
-            @Override
-            public void componentResized(ComponentEvent e) {
-                // Save dialog position
-                pw.storeWindowPosition();
-            }
-
-            @Override
-            public void componentMoved(ComponentEvent e) {
-                // Save dialog position
-                pw.storeWindowPosition();
-            }
-        });
     }
 
 
@@ -207,11 +178,11 @@ class StringDialog extends JDialog {
 
     private void sortStrings() {
         // Rebuild our sorted set of strings:
-        TreeSet<BibtexString> stringsSet = new TreeSet<>(new BibtexStringComparator(false));
+        strings = new ArrayList<>();
         for (String s : base.getStringKeySet()) {
-            stringsSet.add(base.getString(s));
+            strings.add(base.getString(s));
         }
-        strings = stringsSet.toArray();
+        Collections.sort(strings, new BibtexStringComparator(false));
     }
 
     public void refreshTable() {
@@ -239,14 +210,14 @@ class StringDialog extends JDialog {
 
         @Override
         public Object getValueAt(int row, int col) {
-            return col == 0 ? ((BibtexString) strings[row]).getName() : ((BibtexString) strings[row]).getContent();
+            return col == 0 ? strings.get(row).getName() : strings.get(row).getContent();
         }
 
         @Override
         public void setValueAt(Object value, int row, int col) {
             if (col == 0) {
                 // Change name of string.
-                if (!value.equals(((BibtexString) strings[row]).getName())) {
+                if (!value.equals(strings.get(row).getName())) {
                     if (tbase.hasStringLabel((String) value)) {
                         JOptionPane.showMessageDialog(parent, Localization.lang("A string with that label already exists"),
                                 Localization.lang("Label"), JOptionPane.ERROR_MESSAGE);
@@ -261,7 +232,7 @@ class StringDialog extends JDialog {
                                 Localization.lang("Label"), JOptionPane.ERROR_MESSAGE);
                     } else {
                         // Store undo information.
-                        BibtexString subject = (BibtexString) strings[row];
+                        BibtexString subject = strings.get(row);
                         panel.undoManager.addEdit(
                                 new UndoableStringChange(panel, subject, true, subject.getName(), (String) value));
                         subject.setName((String) value);
@@ -271,7 +242,7 @@ class StringDialog extends JDialog {
                 }
             } else {
                 // Change content of string.
-                BibtexString subject = (BibtexString) strings[row];
+                BibtexString subject = strings.get(row);
 
                 if (!value.equals(subject.getContent())) {
                     try {
@@ -296,12 +267,12 @@ class StringDialog extends JDialog {
 
         @Override
         public int getRowCount() {
-            return strings.length;
+            return strings.size();
         }
 
         @Override
         public String getColumnName(int col) {
-            return col == 0 ? Localization.lang("Name") :
+            return col == 0 ? Localization.lang("Label") :
                 Localization.lang("Content");
         }
 
@@ -324,7 +295,7 @@ class StringDialog extends JDialog {
 
     }
 
-    void assureNotEditing() {
+    public void assureNotEditing() {
         if (table.isEditing()) {
             int col = table.getEditingColumn();
             int row = table.getEditingRow();
@@ -333,8 +304,6 @@ class StringDialog extends JDialog {
     }
 
 
-    // The action concerned with closing the window.
-    private final CloseAction closeAction = new CloseAction();
 
 
     class CloseAction extends AbstractAction {
@@ -392,7 +361,6 @@ class StringDialog extends JDialog {
 
                 base.addString(bs);
                 refreshTable();
-                //		table.revalidate();
                 panel.markBaseChanged();
             } catch (KeyCollisionException ex) {
                 JOptionPane.showMessageDialog(parent,
@@ -402,8 +370,6 @@ class StringDialog extends JDialog {
         }
     }
 
-
-    private final SaveDatabaseAction saveAction = new SaveDatabaseAction(this);
 
 
     static class SaveDatabaseAction extends AbstractAction {
@@ -443,9 +409,8 @@ class StringDialog extends JDialog {
                 // keystroke. This makes the content hang on the screen.
                 assureNotEditing();
 
-                String msg = Localization.lang("Really delete the selected") + ' '
-                        + (sel.length > 1 ? sel.length + " " + Localization.lang("entries")
-                        : Localization.lang("entry")) + '?';
+                String msg = (sel.length > 1 ? Localization.lang("Really delete the selected %0 entries?",
+                        Integer.toString(sel.length)) : Localization.lang("Really delete the selected entry?"));
                 int answer = JOptionPane.showConfirmDialog(parent, msg, Localization.lang("Delete strings"),
                         JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
                 if (answer == JOptionPane.YES_OPTION) {
@@ -453,7 +418,7 @@ class StringDialog extends JDialog {
                     for (int i = sel.length - 1; i >= 0; i--) {
                         // Delete the strings backwards to avoid moving indexes.
 
-                        BibtexString subject = (BibtexString) strings[sel[i]];
+                        BibtexString subject = strings.get(sel[i]);
 
                         // Store undo information:
                         ce.addEdit(new UndoableRemoveString(panel, base, subject));
@@ -463,9 +428,8 @@ class StringDialog extends JDialog {
                     ce.end();
                     panel.undoManager.addEdit(ce);
 
-                    //table.revalidate();
                     refreshTable();
-                    if (base.getStringCount() > 0) {
+                    if (!base.hasNoStrings()) {
                         table.setRowSelectionInterval(0, 0);
                     }
                 }
@@ -482,11 +446,7 @@ class StringDialog extends JDialog {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            try {
-                panel.runCommand(Actions.UNDO);
-            } catch (Throwable ignored) {
-                // Ignore
-            }
+            panel.runCommand(Actions.UNDO);
         }
     }
 
@@ -499,11 +459,7 @@ class StringDialog extends JDialog {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            try {
-                panel.runCommand(Actions.REDO);
-            } catch (Throwable ignored) {
-                // Ignore
-            }
+            panel.runCommand(Actions.REDO);
         }
     }
 }

@@ -41,9 +41,9 @@ class GroupChange extends Change {
 
     @Override
     public boolean makeChange(BasePanel panel, BibDatabase secondary, NamedCompound undoEdit) {
-        final GroupTreeNode root = panel.metaData().getGroups();
+        final GroupTreeNode root = panel.getBibDatabaseContext().getMetaData().getGroups();
         final UndoableModifySubtree undo = new UndoableModifySubtree(
-                panel.getGroupSelector(), panel.metaData().getGroups(),
+                panel.getGroupSelector(), panel.getBibDatabaseContext().getMetaData().getGroups(),
                 root, Localization.lang("Modified groups"));
         root.removeAllChildren();
         if (changedGroups == null) {
@@ -58,7 +58,7 @@ class GroupChange extends Change {
             // the group tree is now appled to a different BibDatabase than it was created
             // for, which affects groups such as ExplicitGroup (which links to BibEntry objects).
             // We must traverse the tree and refresh all groups:
-            root.refreshGroupsForNewDatabase(panel.database());
+            root.refreshGroupsForNewDatabase(panel.getDatabase());
         }
 
         if (panel.getGroupSelector().getGroupTreeRoot() == root) {

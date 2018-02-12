@@ -1,19 +1,23 @@
 package net.sf.jabref.gui.maintable;
 
 import net.sf.jabref.Globals;
+import net.sf.jabref.bibtex.InternalBibtexFields;
 import net.sf.jabref.external.ExternalFileType;
 import net.sf.jabref.gui.FileListTableModel;
 import net.sf.jabref.gui.GUIGlobals;
 import net.sf.jabref.gui.IconTheme;
 import net.sf.jabref.model.entry.BibEntry;
-import net.sf.jabref.model.entry.EntryUtil;
 import net.sf.jabref.specialfields.*;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 import javax.swing.*;
 
 public class SpecialMainTableColumns {
 
-    public static final MainTableColumn NUMBER_COL = new MainTableColumn(GUIGlobals.NUMBER_COL) {
+    public static final MainTableColumn NUMBER_COL = new MainTableColumn(InternalBibtexFields.NUMBER_COL) {
 
         @Override
         public Object getColumnValue(BibEntry entry) {
@@ -27,8 +31,8 @@ public class SpecialMainTableColumns {
     };
 
     public static final MainTableColumn RANKING_COLUMN = new MainTableColumn(SpecialFieldsUtils.FIELDNAME_RANKING,
-            new String[] {SpecialFieldsUtils.FIELDNAME_RANKING},
-            new JLabel(EntryUtil.capitalizeFirst(SpecialFieldsUtils.FIELDNAME_RANKING))) {
+            Arrays.asList(SpecialFieldsUtils.FIELDNAME_RANKING),
+            new JLabel(SpecialFieldsUtils.FIELDNAME_RANKING)) {
 
         @Override
         public Object getColumnValue(BibEntry entry) {
@@ -42,7 +46,7 @@ public class SpecialMainTableColumns {
     };
 
     public static final MainTableColumn PRIORITY_COLUMN = new MainTableColumn(SpecialFieldsUtils.FIELDNAME_PRIORITY,
-            new String[] {SpecialFieldsUtils.FIELDNAME_PRIORITY},
+            Arrays.asList(SpecialFieldsUtils.FIELDNAME_PRIORITY),
             new JLabel(Priority.getInstance().getRepresentingIcon())) {
 
         @Override
@@ -59,7 +63,7 @@ public class SpecialMainTableColumns {
     };
 
     public static final MainTableColumn READ_STATUS_COLUMN = new MainTableColumn(SpecialFieldsUtils.FIELDNAME_READ,
-            new String[] {SpecialFieldsUtils.FIELDNAME_READ},
+            Arrays.asList(SpecialFieldsUtils.FIELDNAME_READ),
             new JLabel(ReadStatus.getInstance().getRepresentingIcon())) {
 
         @Override
@@ -76,20 +80,20 @@ public class SpecialMainTableColumns {
     };
 
     public static final MainTableColumn RELEVANCE_COLUMN = createIconColumn(SpecialFieldsUtils.FIELDNAME_RELEVANCE,
-            new String[] {SpecialFieldsUtils.FIELDNAME_RELEVANCE},
+            Arrays.asList(SpecialFieldsUtils.FIELDNAME_RELEVANCE),
             new JLabel(Relevance.getInstance().getRepresentingIcon()));
 
     public static final MainTableColumn PRINTED_COLUMN = createIconColumn(SpecialFieldsUtils.FIELDNAME_PRINTED,
-            new String[] {SpecialFieldsUtils.FIELDNAME_PRINTED},
+            Arrays.asList(SpecialFieldsUtils.FIELDNAME_PRINTED),
             new JLabel(Printed.getInstance().getRepresentingIcon()));
 
     public static final MainTableColumn QUALITY_COLUMN = createIconColumn(SpecialFieldsUtils.FIELDNAME_QUALITY,
-            new String[] {SpecialFieldsUtils.FIELDNAME_QUALITY},
+            Arrays.asList(SpecialFieldsUtils.FIELDNAME_QUALITY),
             new JLabel(Quality.getInstance().getRepresentingIcon()));
 
 
     public static final MainTableColumn FILE_COLUMN = new MainTableColumn(Globals.FILE_FIELD,
-            new String[] {Globals.FILE_FIELD}, new JLabel(IconTheme.JabRefIcon.FILE.getSmallIcon())) {
+            Arrays.asList(Globals.FILE_FIELD), new JLabel(IconTheme.JabRefIcon.FILE.getSmallIcon())) {
 
         @Override
         public Object getColumnValue(BibEntry entry) {
@@ -99,9 +103,11 @@ public class SpecialMainTableColumns {
             if (fileList.getRowCount() > 1) {
                 return new JLabel(IconTheme.JabRefIcon.FILE_MULTIPLE.getSmallIcon());
             } else if (fileList.getRowCount() == 1) {
-                ExternalFileType type = fileList.getEntry(0).getType();
-                if (type != null) {
-                    return type.getIconLabel();
+                Optional<ExternalFileType> type = fileList.getEntry(0).type;
+                if (type.isPresent()) {
+                    return type.get().getIconLabel();
+                } else {
+                    return new JLabel(IconTheme.JabRefIcon.FILE.getSmallIcon());
                 }
             }
 
@@ -116,7 +122,7 @@ public class SpecialMainTableColumns {
      * @param fields     the entry fields which should be shown
      * @return the crated MainTableColumn
      */
-    public static MainTableColumn createIconColumn(String columnName, String[] fields, JLabel iconLabel) {
+    public static MainTableColumn createIconColumn(String columnName, List<String> fields, JLabel iconLabel) {
         return new MainTableColumn(columnName, fields, iconLabel) {
 
             @Override
@@ -126,7 +132,7 @@ public class SpecialMainTableColumns {
 
                 // check for each field whether content is available
                 for (String field : fields) {
-                    if (entry.getField(field) != null) {
+                    if (entry.hasField(field)) {
                         if (iconFound) {
                             return new JLabel(IconTheme.JabRefIcon.FILE_MULTIPLE.getSmallIcon());
                         } else {
@@ -154,7 +160,7 @@ public class SpecialMainTableColumns {
 
 
 
-        return new MainTableColumn(externalFileTypeName, new String[] {Globals.FILE_FIELD}, new JLabel()) {
+        return new MainTableColumn(externalFileTypeName, Arrays.asList(Globals.FILE_FIELD), new JLabel()) {
 
             @Override
             public boolean isFileFilter() {
@@ -174,13 +180,13 @@ public class SpecialMainTableColumns {
                 FileListTableModel fileList = new FileListTableModel();
                 fileList.setContent(entry.getField(Globals.FILE_FIELD));
                 for (int i = 0; i < fileList.getRowCount(); i++) {
-                    if ((fileList.getEntry(i).getType() != null)
-                            && externalFileTypeName.equalsIgnoreCase(fileList.getEntry(i).getType().getName())) {
+                    if ((fileList.getEntry(i).type.isPresent())
+                            && externalFileTypeName.equalsIgnoreCase(fileList.getEntry(i).type.get().getName())) {
                         if (iconFound) {
                             // already found another file of the desired type - show FILE_MULTIPLE Icon
                             return new JLabel(IconTheme.JabRefIcon.FILE_MULTIPLE.getSmallIcon());
                         } else {
-                            iconLabel = fileList.getEntry(i).getType().getIconLabel();
+                            iconLabel = fileList.getEntry(i).type.get().getIconLabel();
                             iconFound = true;
                         }
                     }

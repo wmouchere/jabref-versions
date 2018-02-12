@@ -21,11 +21,18 @@ import net.sf.jabref.gui.desktop.JabRefDesktop;
 import net.sf.jabref.logic.l10n.Localization;
 
 import javax.swing.*;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.awt.event.ActionEvent;
 import java.io.IOException;
 
 public class DonateAction extends AbstractAction {
-    private static final String donationLink = "https://github.com/JabRef/jabref/wiki/Donations";
+
+    private static final Log LOGGER = LogFactory.getLog(DonateAction.class);
+
+    private static final String DONATION_LINK = "https://github.com/JabRef/jabref/wiki/Donations";
 
     public DonateAction() {
         super(Localization.menuTitle("Donate to JabRef"));
@@ -37,10 +44,10 @@ public class DonateAction extends AbstractAction {
     @Override
     public void actionPerformed(ActionEvent e) {
         try {
-            JabRefDesktop.openBrowser(donationLink);
+            JabRefDesktop.openBrowser(DONATION_LINK);
         } catch (IOException ex) {
-            ex.printStackTrace();
-            JabRef.jrf.getCurrentBasePanel().output(Localization.lang("Could not open browser."));
+            LOGGER.warn("Could not open browser", ex);
+            JabRef.mainFrame.getCurrentBasePanel().output(Localization.lang("Could not open browser."));
         }
     }
 }

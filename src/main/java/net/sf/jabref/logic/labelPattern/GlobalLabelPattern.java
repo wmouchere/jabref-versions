@@ -13,7 +13,7 @@
     with this program; if not, write to the Free Software Foundation, Inc.,
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-package net.sf.jabref.logic.labelPattern;
+package net.sf.jabref.logic.labelpattern;
 
 import java.util.List;
 
@@ -21,7 +21,7 @@ public class GlobalLabelPattern extends AbstractLabelPattern {
 
     @Override
     public List<String> getLastLevelLabelPattern(String key) {
-        return LabelPatternUtil.DEFAULT_LABELPATTERN;
+        return LabelPatternUtil.getDefaultLabelPattern();
     }
 
 }

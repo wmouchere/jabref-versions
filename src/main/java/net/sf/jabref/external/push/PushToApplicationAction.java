@@ -16,6 +16,7 @@
 package net.sf.jabref.external.push;
 
 import java.awt.event.ActionEvent;
+import java.util.List;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -35,7 +36,7 @@ class PushToApplicationAction extends AbstractAction implements Runnable {
     private final PushToApplication operation;
     private final JabRefFrame frame;
     private BasePanel panel;
-    private BibEntry[] entries;
+    private List<BibEntry> entries;
 
 
     public PushToApplicationAction(JabRefFrame frame, PushToApplication operation) {
@@ -57,7 +58,7 @@ class PushToApplicationAction extends AbstractAction implements Runnable {
 
         // Check if any entries are selected:
         entries = panel.getSelectedEntries();
-        if (entries.length == 0) {
+        if (entries.isEmpty()) {
             JOptionPane.showMessageDialog(frame, Localization.lang("This operation requires one or more entries to be selected."), (String) getValue(Action.NAME), JOptionPane.ERROR_MESSAGE);
             return;
         }
@@ -66,7 +67,10 @@ class PushToApplicationAction extends AbstractAction implements Runnable {
         if (operation.requiresBibtexKeys()) {
             for (BibEntry entry : entries) {
                 if ((entry.getCiteKey() == null) || entry.getCiteKey().trim().isEmpty()) {
-                    JOptionPane.showMessageDialog(frame, Localization.lang("This operation requires all selected entries to have BibTex keys defined."), (String) getValue(Action.NAME), JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(frame,
+                            Localization
+                                    .lang("This operation requires all selected entries to have BibTeX keys defined."),
+                            (String) getValue(Action.NAME), JOptionPane.ERROR_MESSAGE);
                     return;
                 }
             }
@@ -79,7 +83,7 @@ class PushToApplicationAction extends AbstractAction implements Runnable {
     @Override
     public void run() {
         // Do the operation:
-        operation.pushEntries(panel.database(), entries, getKeyString(entries), panel.metaData());
+        operation.pushEntries(panel.getDatabase(), entries, getKeyString(entries), panel.getBibDatabaseContext().getMetaData());
 
         // Call the operationCompleted() method on the event dispatch thread:
         SwingUtilities.invokeLater(new Runnable() {
@@ -91,7 +95,7 @@ class PushToApplicationAction extends AbstractAction implements Runnable {
         });
     }
 
-    private static String getKeyString(BibEntry[] bibentries) {
+    private static String getKeyString(List<BibEntry> bibentries) {
         StringBuilder result = new StringBuilder();
         String citeKey;
         boolean first = true;

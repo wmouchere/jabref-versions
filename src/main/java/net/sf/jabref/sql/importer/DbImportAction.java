@@ -26,13 +26,14 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JOptionPane;
 
+import net.sf.jabref.BibDatabaseContext;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import net.sf.jabref.gui.*;
 import net.sf.jabref.gui.actions.MnemonicAwareAction;
-import net.sf.jabref.gui.util.PositionWindow;
 import net.sf.jabref.gui.worker.AbstractWorker;
-import net.sf.jabref.model.database.BibDatabase;
 import net.sf.jabref.Globals;
-import net.sf.jabref.MetaData;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.util.Util;
 import net.sf.jabref.sql.DBConnectDialog;
@@ -50,9 +51,10 @@ import net.sf.jabref.sql.SQLUtil;
  */
 public class DbImportAction extends AbstractWorker {
 
-    private BibDatabase database;
-    private MetaData metaData;
-    private boolean connectToDB;
+    private static final Log LOGGER = LogFactory.getLog(DbImportAction.class);
+
+    private BibDatabaseContext databaseContext;
+    private boolean connectedToDB;
     private final JabRefFrame frame;
     private DBStrings dbs;
     private List<DBImporterResult> databases;
@@ -80,7 +82,7 @@ public class DbImportAction extends AbstractWorker {
             try {
                 Util.runAbstractWorker(DbImportAction.this);
             } catch (Throwable throwable) {
-                throwable.printStackTrace();
+                LOGGER.warn("Problem importing from database", throwable);
             }
         }
     }
@@ -98,7 +100,7 @@ public class DbImportAction extends AbstractWorker {
 
         // get DBStrings from user if necessary
         if (dbs.isConfigValid()) {
-            connectToDB = true;
+            connectedToDB = true;
         } else {
             // init DB strings if necessary
             if (!dbs.isInitialized()) {
@@ -107,13 +109,13 @@ public class DbImportAction extends AbstractWorker {
 
             // show connection dialog
             dbd = new DBConnectDialog(frame, dbs);
-            PositionWindow.placeDialog(dbd, frame);
+            dbd.setLocationRelativeTo(frame);
             dbd.setVisible(true);
 
-            connectToDB = dbd.getConnectToDB();
+            connectedToDB = dbd.isConnectedToDB();
 
             // store database strings
-            if (connectToDB) {
+            if (connectedToDB) {
                 dbs = dbd.getDBStrings();
                 dbd.dispose();
             }
@@ -128,14 +130,15 @@ public class DbImportAction extends AbstractWorker {
     }
 
     private void performImport() {
-        if (connectToDB) {
+        if (connectedToDB) {
             try {
                 frame.output(Localization.lang("Attempting SQL import..."));
                 DBExporterAndImporterFactory factory = new DBExporterAndImporterFactory();
                 DBImporter importer = factory.getImporter(dbs.getServerType());
                 try (Connection conn = importer.connectToDB(dbs);
-                     Statement statement = SQLUtil.queryAllFromTable(conn, "jabref_database")) {
-                    ResultSet rs = statement.getResultSet();
+                        Statement statement = SQLUtil.queryAllFromTable(conn, "jabref_database");
+                        ResultSet rs = statement.getResultSet()) {
+
                     Vector<String> v;
                     Vector<Vector<String>> matrix = new Vector<>();
 
@@ -154,13 +157,12 @@ public class DbImportAction extends AbstractWorker {
                                 DBImportExportDialog.DialogType.IMPORTER);
                         if (dialogo.removeAction) {
                             String dbName = dialogo.selectedDB;
-                            importer.removeDB(dialogo, dbName, conn, metaData);
+                            importer.removeDB(dialogo, dbName, conn, databaseContext);
                             performImport();
                         } else if (dialogo.moreThanOne) {
-                            databases = importer.performImport(dbs, dialogo.listOfDBs);
+                            databases = importer.performImport(dbs, dialogo.listOfDBs, frame.getCurrentBasePanel().getBibDatabaseContext().getMode());
                             for (DBImporterResult res : databases) {
-                                database = res.getDatabase();
-                                metaData = res.getMetaData();
+                                databaseContext = res.getDatabaseContext();
                                 dbs.isConfigValid(true);
                             }
                             frame.output(Localization.lang("%0 databases will be imported",
@@ -177,7 +179,7 @@ public class DbImportAction extends AbstractWorker {
                 JOptionPane.showMessageDialog(frame, preamble + '\n' + errorMessage,
                         Localization.lang("Import from SQL database"), JOptionPane.ERROR_MESSAGE);
                 frame.output(Localization.lang("Error importing from database"));
-                ex.printStackTrace();
+                LOGGER.error("Error importing from databae", ex);
             }
         }
     }
@@ -189,11 +191,10 @@ public class DbImportAction extends AbstractWorker {
             return;
         }
         for (DBImporterResult res : databases) {
-            database = res.getDatabase();
-            metaData = res.getMetaData();
-            if (database != null) {
-                BasePanel pan = frame.addTab(database, null, metaData, Globals.prefs.getDefaultEncoding(), true);
-                pan.metaData().setDBStrings(dbs);
+            databaseContext = res.getDatabaseContext();
+            if (databaseContext != null) {
+                BasePanel pan = frame.addTab(databaseContext, Globals.prefs.getDefaultEncoding(), true);
+                pan.getBibDatabaseContext().getMetaData().setDBStrings(dbs);
                 frame.setTabTitle(pan, res.getName() + "(Imported)", "Imported DB");
                 pan.markBaseChanged();
             }

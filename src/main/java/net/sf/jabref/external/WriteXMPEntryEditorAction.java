@@ -15,23 +15,22 @@
  */
 package net.sf.jabref.external;
 
-import net.sf.jabref.Globals;
-import net.sf.jabref.gui.*;
-import net.sf.jabref.gui.worker.AbstractWorker;
-import net.sf.jabref.gui.entryeditor.EntryEditor;
-import net.sf.jabref.logic.l10n.Localization;
-import net.sf.jabref.model.entry.BibEntry;
-import net.sf.jabref.logic.util.io.FileUtil;
-import net.sf.jabref.logic.xmp.XMPUtil;
-
-import javax.swing.*;
-import javax.xml.transform.TransformerException;
-
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+import javax.swing.*;
+import javax.xml.transform.TransformerException;
+
+import net.sf.jabref.Globals;
+import net.sf.jabref.gui.*;
+import net.sf.jabref.gui.entryeditor.EntryEditor;
+import net.sf.jabref.gui.worker.AbstractWorker;
+import net.sf.jabref.logic.l10n.Localization;
+import net.sf.jabref.logic.util.io.FileUtil;
+import net.sf.jabref.logic.xmp.XMPUtil;
+import net.sf.jabref.model.entry.BibEntry;
 
 /**
  * Write XMP action for EntryEditor toolbar.
@@ -49,7 +48,7 @@ public class WriteXMPEntryEditorAction extends AbstractAction {
         // normally, the next call should be without "Localization.lang". However, the string "Write XMP" is also used in non-menu places and therefore, the translation must be also available at Localization.lang
         putValue(Action.NAME, Localization.lang("Write XMP"));
         putValue(Action.SMALL_ICON, IconTheme.JabRefIcon.WRITE_XMP.getIcon());
-        putValue(Action.SHORT_DESCRIPTION, Localization.lang("Write BibtexEntry as XMP-metadata to PDF."));
+        putValue(Action.SHORT_DESCRIPTION, Localization.lang("Write BibTeXEntry as XMP-metadata to PDF."));
     }
 
     @Override
@@ -65,25 +64,18 @@ public class WriteXMPEntryEditorAction extends AbstractAction {
 
         // First check the (legacy) "pdf" field:
         String pdf = entry.getField("pdf");
-        String[] dirs = panel.metaData().getFileDirectory("pdf");
-        File f = FileUtil.expandFilename(pdf, dirs);
-        if (f != null) {
-            files.add(f);
-        }
+        List<String> dirs = panel.getBibDatabaseContext().getFileDirectory("pdf");
+        FileUtil.expandFilename(pdf, dirs).ifPresent(files::add);
 
         // Then check the "file" field:
-        dirs = panel.metaData().getFileDirectory(Globals.FILE_FIELD);
-        String field = entry.getField(Globals.FILE_FIELD);
-        if (field != null) {
+        dirs = panel.getBibDatabaseContext().getFileDirectory();
+        if (entry.hasField(Globals.FILE_FIELD)) {
             FileListTableModel tm = new FileListTableModel();
-            tm.setContent(field);
+            tm.setContent(entry.getField(Globals.FILE_FIELD));
             for (int j = 0; j < tm.getRowCount(); j++) {
                 FileListEntry flEntry = tm.getEntry(j);
-                if ((flEntry.getType() != null) && "pdf".equals(flEntry.getType().getName().toLowerCase())) {
-                    f = FileUtil.expandFilename(flEntry.getLink(), dirs);
-                    if (f != null) {
-                        files.add(f);
-                    }
+                if ((flEntry.type.isPresent()) && "pdf".equalsIgnoreCase(flEntry.type.get().getName())) {
+                    FileUtil.expandFilename(flEntry.link, dirs).ifPresent(files::add);
                 }
             }
         }
@@ -130,7 +122,7 @@ public class WriteXMPEntryEditorAction extends AbstractAction {
 
                     } else {
                         try {
-                            XMPUtil.writeXMP(file, entry, panel.database());
+                            XMPUtil.writeXMP(file, entry, panel.getDatabase());
                             if (files.size() == 1) {
                                 message = Localization.lang("Wrote XMP-metadata");
                             }

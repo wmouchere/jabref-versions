@@ -18,8 +18,6 @@ package net.sf.jabref.logic.journals;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.*;
 
 /**
@@ -35,38 +33,19 @@ public class JournalAbbreviationRepository {
 
     private static final Log LOGGER = LogFactory.getLog(JournalAbbreviationRepository.class);
 
-    public void readJournalListFromResource(String resource) {
-        AbbreviationParser parser = new AbbreviationParser();
-        parser.readJournalListFromResource(Objects.requireNonNull(resource));
-        for (Abbreviation abbreviation : parser.getAbbreviations()) {
-            addEntry(abbreviation);
-        }
-    }
-
-    public void readJournalListFromFile(File file) throws FileNotFoundException {
-        LOGGER.debug("Reading journal list from file " + file);
-        AbbreviationParser parser = new AbbreviationParser();
-        parser.readJournalListFromFile(Objects.requireNonNull(file));
-        for (Abbreviation abbreviation : parser.getAbbreviations()) {
-            addEntry(abbreviation);
-        }
-    }
-
     public int size() {
         return abbreviations.size();
     }
 
     public boolean isKnownName(String journalName) {
-        String nameKey = Objects.requireNonNull(journalName).trim().toLowerCase();
-        return (fullNameLowerCase2Abbreviation.get(nameKey) != null)
-                || (isoLowerCase2Abbreviation.get(nameKey) != null)
-                || (medlineLowerCase2Abbreviation.get(nameKey) != null);
+        String nameKey = Objects.requireNonNull(journalName).trim().toLowerCase(Locale.ENGLISH);
+        return (fullNameLowerCase2Abbreviation.containsKey(nameKey)) || (isoLowerCase2Abbreviation.containsKey(nameKey))
+                || (medlineLowerCase2Abbreviation.containsKey(nameKey));
     }
 
     public boolean isAbbreviatedName(String journalName) {
-        String nameKey = Objects.requireNonNull(journalName).trim().toLowerCase();
-        return (isoLowerCase2Abbreviation.get(nameKey) != null)
-                || (medlineLowerCase2Abbreviation.get(nameKey) != null);
+        String nameKey = Objects.requireNonNull(journalName).trim().toLowerCase(Locale.ENGLISH);
+        return (isoLowerCase2Abbreviation.containsKey(nameKey)) || (medlineLowerCase2Abbreviation.containsKey(nameKey));
     }
 
     /**
@@ -76,7 +55,7 @@ public class JournalAbbreviationRepository {
      * @return The abbreviated name
      */
     public Optional<Abbreviation> getAbbreviation(String journalName) {
-        String nameKey = Objects.requireNonNull(journalName).toLowerCase().trim();
+        String nameKey = Objects.requireNonNull(journalName).toLowerCase(Locale.ENGLISH).trim();
 
         if (fullNameLowerCase2Abbreviation.containsKey(nameKey)) {
             return Optional.of(fullNameLowerCase2Abbreviation.get(nameKey));
@@ -101,9 +80,14 @@ public class JournalAbbreviationRepository {
 
         abbreviations.add(abbreviation);
 
-        fullNameLowerCase2Abbreviation.put(abbreviation.getName().toLowerCase(), abbreviation);
-        isoLowerCase2Abbreviation.put(abbreviation.getIsoAbbreviation().toLowerCase(), abbreviation);
-        medlineLowerCase2Abbreviation.put(abbreviation.getMedlineAbbreviation().toLowerCase(), abbreviation);
+        fullNameLowerCase2Abbreviation.put(abbreviation.getName().toLowerCase(Locale.ENGLISH), abbreviation);
+        isoLowerCase2Abbreviation.put(abbreviation.getIsoAbbreviation().toLowerCase(Locale.ENGLISH), abbreviation);
+        medlineLowerCase2Abbreviation.put(abbreviation.getMedlineAbbreviation().toLowerCase(Locale.ENGLISH),
+                abbreviation);
+    }
+
+    public void addEntries(List<Abbreviation> abbreviationsToAdd) {
+        abbreviationsToAdd.forEach(abbreviation -> addEntry(abbreviation));
     }
 
     public SortedSet<Abbreviation> getAbbreviations() {

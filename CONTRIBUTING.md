@@ -18,10 +18,7 @@ Nevertheless we aim to keep the code consistently formatted, therefore we additi
 
 ### Ensure consistent formatting
 Ensure your code is formatted according the JabRef formatting guidelines.
-These are provided as Eclipse formatting configuration in [formatter_settings.xml](ide-settings/formatter_settings.xml).
-Ensure that JabRef's code cleanup settings are activated.
-Import [cleanup_settings.xml](ide-settings/cleanup_settings.xml).
-When you use Eclipse, the required config is generated automatically by `gradlew eclipse`.
+When you use Eclipse, the required configuration is generated automatically by `gradlew cleanEclipse eclipse`.
 You can also run `gradlew format` to let the [Gradle Format plugin](https://github.com/youribonnaffe/gradle-format-plugin) do the formatting.
 
 
@@ -43,10 +40,9 @@ If you need to merge different Git usernames or email addresses you can do so by
 More information on this can be found via `man git-shortlog`.
 
 
-### Add yourself to the header
-The headers of each `.java` file state the authors.
-These entries should match the modifications done.
-If you do not want to add your real name, add yourself as `JabRef contributors`.
+### Modify the header
+The headers of each `.java` file states "JabREf contributors".
+Author credits are given using the `AUTHORS` file and by using the `git blame` functionality.
 
 For instance,
 
@@ -57,12 +53,12 @@ For instance,
 gets
 
 ```plain
-/*  Copyright (C) 2003-2011 JabRef contributors.
- *  Copyright (C) 2015 Stefan Jauch
+/*  Copyright (C) 2003-2016 JabRef contributors.
 ```
 
 Please, **do not add yourself at `@authors`**.
 We have track this information in the header only.
+
 
 ### Write a good commit message
 See [good commit message] or [commit guidelines section of Pro Git].
@@ -94,7 +90,7 @@ facing <concern c>
 we decided for <option o>
 and neglected <other options>,
 to achieve <system qualities/desired consequences>,
-accepting <downside d/undesired consequences>.
+accepting <downside d/undesired consequences>,
 because <additional rationale>.
 ```
 

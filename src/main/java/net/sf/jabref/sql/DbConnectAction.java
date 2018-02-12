@@ -16,7 +16,6 @@
 package net.sf.jabref.sql;
 
 import net.sf.jabref.gui.actions.BaseAction;
-import net.sf.jabref.gui.util.PositionWindow;
 import net.sf.jabref.gui.BasePanel;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.sql.exporter.DBExporter;
@@ -59,7 +58,7 @@ public class DbConnectAction implements BaseAction {
     @Override
     public void action() {
 
-        DBStrings dbs = panel.metaData().getDBStrings();
+        DBStrings dbs = panel.getBibDatabaseContext().getMetaData().getDBStrings();
 
         // init DB strings if necessary
         if (!dbs.isInitialized()) {
@@ -68,11 +67,11 @@ public class DbConnectAction implements BaseAction {
 
         // show connection dialog
         DBConnectDialog dbd = new DBConnectDialog(panel.frame(), dbs);
-        PositionWindow.placeDialog(dbd, panel);
+        dbd.setLocationRelativeTo(panel);
         dbd.setVisible(true);
 
         // connect to database to test DBStrings
-        if (dbd.getConnectToDB()) {
+        if (dbd.isConnectedToDB()) {
 
             dbs = dbd.getDBStrings();
 
@@ -99,7 +98,7 @@ public class DbConnectAction implements BaseAction {
                         Localization.lang("Connect to SQL database"),
                         JOptionPane.ERROR_MESSAGE);
             } finally {
-                panel.metaData().setDBStrings(dbs);
+                panel.getBibDatabaseContext().getMetaData().setDBStrings(dbs);
                 dbd.dispose();
             }
         }

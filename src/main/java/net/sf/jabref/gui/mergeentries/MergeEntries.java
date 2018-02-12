@@ -22,10 +22,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-
-import net.sf.jabref.model.entry.EntryType;
+import net.sf.jabref.model.database.BibDatabaseMode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -34,7 +31,6 @@ import net.sf.jabref.bibtex.BibEntryWriter;
 import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.Globals;
 import net.sf.jabref.JabRefPreferences;
-import net.sf.jabref.MetaData;
 import net.sf.jabref.logic.formatter.CaseChangers;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.gui.PreviewPanel;
@@ -52,7 +48,7 @@ import com.jgoodies.forms.layout.ColumnSpec;
 
 public class MergeEntries {
 
-    private static final Log LOGGER = LogFactory.getLog(Globals.class);
+    private static final Log LOGGER = LogFactory.getLog(MergeEntries.class);
 
     // Headings
     private final String[] columnHeadings = {Localization.lang("Field"),
@@ -68,6 +64,7 @@ public class MergeEntries {
     private final BibEntry mergedEntry = new BibEntry();
     private final BibEntry one;
     private final BibEntry two;
+    private final BibDatabaseMode type;
     private JTextArea jta;
     private PreviewPanel pp;
     private Boolean doneBuilding = false;
@@ -85,9 +82,10 @@ public class MergeEntries {
      * @param bOne First entry
      * @param bTwo Second entry
      */
-    public MergeEntries(BibEntry bOne, BibEntry bTwo) {
+    public MergeEntries(BibEntry bOne, BibEntry bTwo, BibDatabaseMode type) {
         one = bOne;
         two = bTwo;
+        this.type = type;
         initialize();
     }
 
@@ -99,11 +97,13 @@ public class MergeEntries {
      * @param headingOne Heading for first entry
      * @param headingTwo Heading for second entry
      */
-    public MergeEntries(BibEntry bOne, BibEntry bTwo, String headingOne, String headingTwo) {
+    public MergeEntries(BibEntry bOne, BibEntry bTwo, String headingOne, String headingTwo, BibDatabaseMode type) {
         columnHeadings[1] = headingOne;
         columnHeadings[5] = headingTwo;
         one = bOne;
         two = bTwo;
+
+        this.type = type;
 
         initialize();
     }
@@ -156,7 +156,7 @@ public class MergeEntries {
         mainPanel.add(label, cc.xyw(4, 1, 7, "center, bottom"));
 
         // Set headings
-        JLabel headingLabels[] = new JLabel[6];
+        JLabel[] headingLabels = new JLabel[6];
         for (int i = 0; i < 6; i++) {
             headingLabels[i] = new JLabel(columnHeadings[i]);
             font = headingLabels[i].getFont();
@@ -168,8 +168,8 @@ public class MergeEntries {
         mainPanel.add(new JSeparator(), cc.xyw(1, 3, 11));
 
         // Start with entry type
-        EntryType type1 = one.getType();
-        EntryType type2 = two.getType();
+        String type1 = one.getType();
+        String type2 = two.getType();
 
         mergedEntry.setType(type1);
         label = new JLabel(Localization.lang("Entry type"));
@@ -177,7 +177,7 @@ public class MergeEntries {
         label.setFont(font.deriveFont(font.getStyle() | Font.BOLD));
         mergePanel.add(label, cc.xy(1, 1));
 
-        JTextArea type1ta = new JTextArea(type1.getName());
+        JTextArea type1ta = new JTextArea(type1);
         type1ta.setEditable(false);
         mergePanel.add(type1ta, cc.xy(3, 1));
         if (type1.compareTo(type2) == 0) {
@@ -189,27 +189,21 @@ public class MergeEntries {
                 rb[k][0] = new JRadioButton();
                 rbg[0].add(rb[k][0]);
                 mergePanel.add(rb[k][0], cc.xy(5 + (k * 2), 1));
-                rb[k][0].addChangeListener(new ChangeListener() {
-
-                    @Override
-                    public void stateChanged(ChangeEvent e) {
-                        updateAll();
-                    }
-                });
+                rb[k][0].addChangeListener(e -> updateAll());
             }
             rb[0][0].setSelected(true);
         }
-        JTextArea type2ta = new JTextArea(type2.getName());
+        JTextArea type2ta = new JTextArea(type2);
         type2ta.setEditable(false);
         mergePanel.add(type2ta, cc.xy(11, 1));
 
         // For all fields in joint add a row and possibly radio buttons
         int row = 2;
         int maxLabelWidth = -1;
-        int tmpLabelWidth = 0;
+        int tmpLabelWidth;
         for (String field : joint) {
             jointStrings[row - 2] = field;
-            label = new JLabel(CaseChangers.UPPER_FIRST.format(field));
+            label = new JLabel(CaseChangers.TO_SENTENCE_CASE.format(field));
             font = label.getFont();
             label.setFont(font.deriveFont(font.getStyle() | Font.BOLD));
             mergePanel.add(label, cc.xy(1, row));
@@ -253,13 +247,7 @@ public class MergeEntries {
                     rb[k][row - 1] = new JRadioButton();
                     rbg[row - 1].add(rb[k][row - 1]);
                     mergePanel.add(rb[k][row - 1], cc.xy(5 + (k * 2), row));
-                    rb[k][row - 1].addChangeListener(new ChangeListener() {
-
-                        @Override
-                        public void stateChanged(ChangeEvent e) {
-                            updateAll();
-                        }
-                    });
+                    rb[k][row - 1].addChangeListener(e -> updateAll());
                 }
                 if (string1 == null) {
                     rb[0][row - 1].setEnabled(false);
@@ -301,7 +289,7 @@ public class MergeEntries {
         mainPanel.add(new JSeparator(), cc.xyw(1, 5, 11));
 
         // Synchronize column widths
-        String rbAlign[] = {"right", "center", "left"};
+        String[] rbAlign = {"right", "center", "left"};
         mainLayout.setColumnSpec(1, ColumnSpec.decode(Integer.toString(maxLabelWidth) + "px"));
         Integer maxRBWidth = -1;
         Integer tmpRBWidth;
@@ -322,7 +310,7 @@ public class MergeEntries {
         mainPanel.add(label, cc.xyw(1, 6, 6));
 
         String layoutString = Globals.prefs.get(JabRefPreferences.PREVIEW_0);
-        pp = new PreviewPanel(null, mergedEntry, null, new MetaData(), layoutString);
+        pp = new PreviewPanel(null, mergedEntry, null, layoutString);
         // JScrollPane jsppp = new JScrollPane(pp, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         mainPanel.add(pp, cc.xyw(1, 8, 6));
 
@@ -338,7 +326,7 @@ public class MergeEntries {
         jta.setEditable(false);
         StringWriter sw = new StringWriter();
         try {
-            new BibEntryWriter(new LatexFieldFormatter(), false).write(mergedEntry, sw);
+            new BibEntryWriter(new LatexFieldFormatter(), false).write(mergedEntry, sw, type);
         } catch (IOException ex) {
             LOGGER.error("Error in entry" + ": " + ex.getMessage(), ex);
         }
@@ -363,12 +351,7 @@ public class MergeEntries {
 
         // Show what we've got
         mainPanel.setVisible(true);
-        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                scrollPane.getVerticalScrollBar().setValue(0);
-            }
-        });
+        javax.swing.SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
     }
 
     /**
@@ -421,7 +404,7 @@ public class MergeEntries {
         // Update the Bibtex source view
         StringWriter sw = new StringWriter();
         try {
-            new BibEntryWriter(new LatexFieldFormatter(), false).write(mergedEntry, sw);
+            new BibEntryWriter(new LatexFieldFormatter(), false).write(mergedEntry, sw, type);
         } catch (IOException ex) {
             LOGGER.error("Error in entry" + ": " + ex.getMessage(), ex);
         }

@@ -25,7 +25,6 @@ import java.util.regex.Pattern;
 import net.sf.jabref.importer.ImportFormatReader;
 import net.sf.jabref.importer.OutputPrinter;
 import net.sf.jabref.model.entry.BibEntry;
-import net.sf.jabref.model.entry.BibtexEntryTypes;
 
 /**
  * Importer for COPAC format.
@@ -88,36 +87,37 @@ public class CopacImporter extends ImportFormat {
             throw new IOException("No stream given.");
         }
 
-        BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream));
-
         List<String> entries = new LinkedList<>();
+        StringBuilder sb = new StringBuilder();
 
-        // Preprocess entries
-        String str;
-        StringBuffer sb = new StringBuffer();
+        try (BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
+            // Preprocess entries
+            String str;
 
-        while ((str = in.readLine()) != null) {
+            while ((str = in.readLine()) != null) {
 
-            if (str.length() < 4) {
-                continue;
-            }
-
-            String code = str.substring(0, 4);
-
-            if ("    ".equals(code)) {
-                sb.append(' ').append(str.trim());
-            } else {
-
-                // begining of a new item
-                if ("TI- ".equals(str.substring(0, 4))) {
-                    if (sb.length() > 0) {
-                        entries.add(sb.toString());
-                    }
-                    sb = new StringBuffer();
+                if (str.length() < 4) {
+                    continue;
                 }
-                sb.append('\n').append(str);
+
+                String code = str.substring(0, 4);
+
+                if ("    ".equals(code)) {
+                    sb.append(' ').append(str.trim());
+                } else {
+
+                    // begining of a new item
+                    if ("TI- ".equals(str.substring(0, 4))) {
+                        if (sb.length() > 0) {
+                            entries.add(sb.toString());
+                        }
+                        sb = new StringBuilder();
+                    }
+                    sb.append('\n').append(str);
+                }
             }
         }
+
         if (sb.length() > 0) {
             entries.add(sb.toString());
         }
@@ -128,8 +128,7 @@ public class CopacImporter extends ImportFormat {
 
             // Copac does not contain enough information on the type of the
             // document. A book is assumed.
-            BibEntry b = new BibEntry(DEFAULT_BIBTEXENTRY_ID,
-                    BibtexEntryTypes.BOOK);
+            BibEntry b = new BibEntry(DEFAULT_BIBTEXENTRY_ID, "book");
 
             String[] lines = entry.split("\n");
 
@@ -171,11 +170,10 @@ public class CopacImporter extends ImportFormat {
     }
 
     private static void setOrAppend(BibEntry b, String field, String value, String separator) {
-        String o = b.getField(field);
-        if (o == null) {
-            b.setField(field, value);
+        if (b.hasField(field)) {
+            b.setField(field, b.getField(field) + separator + value);
         } else {
-            b.setField(field, o + separator + value);
+            b.setField(field, value);
         }
     }
 }

@@ -1,13 +1,12 @@
-# JabRef Version 3.2
+# JabRef Version 3.3
 
-[![CircleCI](https://img.shields.io/circleci/project/JabRef/jabref/master.svg)](https://circleci.com/gh/JabRef/jabref)
+[![Build Status](https://travis-ci.org/JabRef/jabref.svg?branch=master)](https://travis-ci.org/JabRef/jabref)
 [![Dependency Status](https://www.versioneye.com/user/projects/557f2723386664002000009c/badge.svg?style=flat)](https://www.versioneye.com/user/projects/557f2723386664002000009c)
 [![codecov.io](https://codecov.io/github/JabRef/jabref/coverage.svg?branch=master)](https://codecov.io/github/JabRef/jabref?branch=master)
-[![Coverity Status](https://badges.ondemand.coverity.com/streams/tslj9m8e2149d8elggiskktgpc)](https://ondemand.coverity.com/streams/tslj9m8e2149d8elggiskktgpc)
 [![Donation](https://img.shields.io/badge/donate-paypal-orange.svg)](https://www.paypal.com/cgi-bin/webscr?item_name=JabRef+Bibliography+Manager&cmd=_donations&lc=US&currency_code=EUR&business=jabrefmail%40gmail.com)
-[![Download JabRef](https://img.shields.io/sourceforge/dw/jabref.svg)](http://sourceforge.net/projects/jabref/files/)
 [![Issue Stats](http://www.issuestats.com/github/jabref/jabref/badge/pr)](http://www.issuestats.com/github/jabref/jabref)
 [![Issue Stats](http://www.issuestats.com/github/jabref/jabref/badge/issue)](http://www.issuestats.com/github/jabref/jabref)
+[![Codacy Badge](https://api.codacy.com/project/badge/grade/327430c894e04086a5bfef618fa44f36)](https://www.codacy.com/app/simonharrer/jabref)
 
 Development builds are available at [builds.jabref.org](http://builds.jabref.org/master/), the [latest release is available via GitHub](https://github.com/JabRef/jabref/releases/latest).
 
@@ -66,13 +65,9 @@ Try to double click the `jar` file or execute the following command:
 
 ## Documentation
 
-JabRef comes with an online help function, accessed by pressing `F1` or
-clicking on a question mark icon. The help files are probably not
-exhaustive enough to satisfy everyone yet, but they should help sort
-out the most important issues about using the program. The help files
-can also be viewed outside the program with a standard HTML browser.
-If you choose languages other than English, some or all help pages may
-appear in your chosen languages.
+JabRef comes with an [online help](http://help.jabref.org/), accessed by pressing `F1` or clicking on a question mark icon.
+The help is are probably not exhaustive enough to satisfy everyone yet, but it should help sort out the most important issues about using the program. 
+If you choose languages other than English, some or all help pages may appear in your chosen languages.
 
 
 ## Building JabRef From Source
@@ -123,3 +118,4 @@ See [external libraries](external-libraries.txt) for details.
   [BibTeX]: https://www.ctan.org/pkg/bibtex
   [Biblatex]: https://www.ctan.org/pkg/biblatex
   [install4j]: https://www.ej-technologies.com/products/install4j/overview.html
+  [JabRef]: http://www.jabref.org

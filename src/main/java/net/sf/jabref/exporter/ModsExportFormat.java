@@ -15,17 +15,20 @@
 */
 package net.sf.jabref.exporter;
 
-import net.sf.jabref.model.database.BibDatabase;
-import net.sf.jabref.MetaData;
-import net.sf.jabref.logic.l10n.Localization;
+import net.sf.jabref.BibDatabaseContext;
 import net.sf.jabref.logic.mods.MODSDatabase;
+import net.sf.jabref.model.entry.BibEntry;
 
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.OutputKeys;
-import java.util.Set;
+import java.util.List;
+import java.util.Objects;
+
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -37,33 +40,34 @@ import java.io.File;
 class ModsExportFormat extends ExportFormat {
 
     public ModsExportFormat() {
-        super(Localization.lang("MODS"), "mods", null, null, ".xml");
+        super("MODS", "mods", null, null, ".xml");
     }
 
     @Override
-    public void performExport(final BibDatabase database, final MetaData metaData,
- final String file,
-            final Charset encoding, Set<String> keySet) throws IOException {
-        SaveSession ss = getSaveSession(StandardCharsets.UTF_8, new File(file));
-        VerifyingWriter ps = ss.getWriter();
-        MODSDatabase md = new MODSDatabase(database, keySet);
-
-        try {
-            DOMSource source = new DOMSource(md.getDOMrepresentation());
-            StreamResult result = new StreamResult(ps);
-            Transformer trans = TransformerFactory.newInstance().newTransformer();
-            trans.setOutputProperty(OutputKeys.INDENT, "yes");
-            trans.transform(source, result);
-        } catch (Exception e) {
-            throw new Error(e);
+    public void performExport(final BibDatabaseContext databaseContext, final String file,
+            final Charset encoding, List<BibEntry> entries) throws IOException {
+        Objects.requireNonNull(databaseContext);
+        Objects.requireNonNull(entries);
+        if (entries.isEmpty()) { // Only export if entries exist
+            return;
         }
 
-        try {
-            finalizeSaveSession(ss);
-        } catch (SaveException ex) {
+        SaveSession ss = new SaveSession(StandardCharsets.UTF_8, false);
+        try (VerifyingWriter ps = ss.getWriter()) {
+            MODSDatabase md = new MODSDatabase(databaseContext.getDatabase(), entries);
+
+            try {
+                DOMSource source = new DOMSource(md.getDOMrepresentation());
+                StreamResult result = new StreamResult(ps);
+                Transformer trans = TransformerFactory.newInstance().newTransformer();
+                trans.setOutputProperty(OutputKeys.INDENT, "yes");
+                trans.transform(source, result);
+            } catch (TransformerException | IllegalArgumentException | TransformerFactoryConfigurationError e) {
+                throw new Error(e);
+            }
+            finalizeSaveSession(ss, new File(file));
+        } catch (SaveException | IOException ex) {
             throw new IOException(ex.getMessage());
-        } catch (Exception e) {
-            throw new IOException(e.getMessage());
         }
     }
 }

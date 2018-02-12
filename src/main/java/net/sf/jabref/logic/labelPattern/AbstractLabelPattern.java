@@ -15,12 +15,9 @@
     with this program; if not, write to the Free Software Foundation, Inc.,
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
-package net.sf.jabref.logic.labelPattern;
+package net.sf.jabref.logic.labelpattern;
 
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * A small table, where an entry type is associated with a label pattern (an
@@ -30,13 +27,36 @@ public abstract class AbstractLabelPattern {
 
     protected List<String> defaultPattern;
 
-    protected Map<String, List<String>> data = new Hashtable<>();
-
-    public AbstractLabelPattern() {
-    }
+    protected Map<String, List<String>> data = new HashMap<>();
 
     public void addLabelPattern(String type, String pattern) {
         data.put(type, LabelPatternUtil.split(pattern));
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("AbstractLabelPattern{");
+        sb.append("defaultPattern=").append(defaultPattern);
+        sb.append(", data=").append(data);
+        sb.append('}');
+        return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        AbstractLabelPattern that = (AbstractLabelPattern) o;
+        return Objects.equals(defaultPattern, that.defaultPattern) && Objects.equals(data, that.data);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(defaultPattern, data);
     }
 
     /**

@@ -26,7 +26,6 @@ import java.util.*;
 
 import net.sf.jabref.importer.ImportFormatReader;
 import net.sf.jabref.importer.OutputPrinter;
-import net.sf.jabref.bibtex.EntryTypes;
 import net.sf.jabref.model.entry.IdGenerator;
 import net.sf.jabref.model.entry.BibEntry;
 import org.apache.commons.logging.Log;
@@ -161,7 +160,6 @@ public class RepecNepImporter extends ImportFormat {
     private int line;
     private String lastLine = "";
     private String preLine = "";
-    private BufferedReader in;
     private boolean inOverviewSection;
 
 
@@ -214,19 +212,20 @@ public class RepecNepImporter extends ImportFormat {
         // read the first couple of lines
         // NEP message usually contain the String 'NEP: New Economics Papers'
         // or, they are from nep.repec.org
-        BufferedReader inBR = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream));
-        StringBuffer startOfMessage = new StringBuffer();
-        String tmpLine = inBR.readLine();
-        for (int i = 0; (i < 25) && (tmpLine != null); i++) {
-            startOfMessage.append(tmpLine);
-            tmpLine = inBR.readLine();
+        try (BufferedReader inBR = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
+            StringBuilder startOfMessage = new StringBuilder();
+            String tmpLine = inBR.readLine();
+            for (int i = 0; (i < 25) && (tmpLine != null); i++) {
+                startOfMessage.append(tmpLine);
+                tmpLine = inBR.readLine();
+            }
+            return startOfMessage.toString().contains("NEP: New Economics Papers")
+                    || startOfMessage.toString().contains("nep.repec.org");
         }
-        return startOfMessage.toString().contains("NEP: New Economics Papers")
-                || startOfMessage.toString().contains("nep.repec.org");
     }
 
     private boolean startsWithKeyword(Collection<String> keywords) {
-        boolean result = this.lastLine.indexOf(':') > 0;
+        boolean result = this.lastLine.indexOf(':') >= 1;
         if (result) {
             String possibleKeyword = this.lastLine.substring(0, this.lastLine.indexOf(':'));
             result = keywords.contains(possibleKeyword);
@@ -234,10 +233,10 @@ public class RepecNepImporter extends ImportFormat {
         return result;
     }
 
-    private void readLine() throws IOException {
+    private void readLine(BufferedReader in) throws IOException {
         this.line++;
         this.preLine = this.lastLine;
-        this.lastLine = this.in.readLine();
+        this.lastLine = in.readLine();
     }
 
     /**
@@ -254,12 +253,12 @@ public class RepecNepImporter extends ImportFormat {
      *
      * @return  result
      */
-    private String readMultipleLines() throws IOException {
-        StringBuffer result = new StringBuffer(this.lastLine.trim());
-        readLine();
+    private String readMultipleLines(BufferedReader in) throws IOException {
+        StringBuilder result = new StringBuilder(this.lastLine.trim());
+        readLine(in);
         while ((this.lastLine != null) && !"".equals(this.lastLine.trim()) && !startsWithKeyword(RepecNepImporter.RECOGNIZED_FIELDS) && !isStartOfWorkingPaper()) {
             result.append(this.lastLine.isEmpty() ? this.lastLine.trim() : " " + this.lastLine.trim());
-            readLine();
+            readLine(in);
         }
         return result.toString();
     }
@@ -270,57 +269,63 @@ public class RepecNepImporter extends ImportFormat {
      * @param be
      * @throws IOException
      */
-    private void parseTitleString(BibEntry be) throws IOException {
+    private void parseTitleString(BibEntry be, BufferedReader in) throws IOException {
         // skip article number
         this.lastLine = this.lastLine.substring(this.lastLine.indexOf('.') + 1, this.lastLine.length());
-        be.setField("title", readMultipleLines());
+        be.setField("title", readMultipleLines(in));
     }
 
     /**
-     * Implements grammer rule "Authors"
+     * Implements grammar rule "Authors"
      *
      * @param be
      * @throws IOException
      */
-    private void parseAuthors(BibEntry be) throws IOException {
+    private void parseAuthors(BibEntry be, BufferedReader in) throws IOException {
         // read authors and institutions
-        String authors = "";
-        String institutions = "";
+        List<String> authors = new ArrayList<>();
+        StringBuilder institutions = new StringBuilder();
         while ((this.lastLine != null) && !"".equals(this.lastLine) && !startsWithKeyword(RepecNepImporter.RECOGNIZED_FIELDS)) {
 
             // read single author
             String author;
-            String institution = null;
+            StringBuilder institution = new StringBuilder();
             boolean institutionDone;
             if (this.lastLine.indexOf('(') >= 0) {
                 author = this.lastLine.substring(0, this.lastLine.indexOf('(')).trim();
-                institutionDone = this.lastLine.indexOf(')') > 0;
-                institution = this.lastLine.substring(this.lastLine.indexOf('(') + 1, institutionDone && (this.lastLine.indexOf(')') > (this.lastLine.indexOf('(') + 1)) ? this.lastLine.indexOf(')') : this.lastLine.length()).trim();
+                institutionDone = this.lastLine.indexOf(')') >= 1;
+                institution
+                        .append(this.lastLine.substring(this.lastLine.indexOf('(') + 1,
+                                institutionDone && (this.lastLine
+                                        .indexOf(')') > (this.lastLine.indexOf('(') + 1)) ? this.lastLine
+                                                .indexOf(')') : this.lastLine.length())
+                                .trim());
             } else {
                 author = this.lastLine.substring(0, this.lastLine.length()).trim();
                 institutionDone = true;
             }
 
-            readLine();
+            readLine(in);
             while (!institutionDone && (this.lastLine != null)) {
-                institutionDone = this.lastLine.indexOf(')') > 0;
-                institution += this.lastLine.substring(0, institutionDone ? this.lastLine.indexOf(')') : this.lastLine.length()).trim();
-                readLine();
+                institutionDone = this.lastLine.indexOf(')') >= 1;
+                institution.append(this.lastLine
+                        .substring(0, institutionDone ? this.lastLine.indexOf(')') : this.lastLine.length()).trim());
+                readLine(in);
             }
 
-            if (author != null) {
-                authors += "".equals(authors) ? author : " and " + author;
-            }
-            if (institution != null) {
-                institutions += "".equals(institutions) ? institution : " and " + institution;
+            authors.add(author);
+
+            if (institution.length() > 0) {
+                institutions.append(
+                        (institutions.length() == 0) ? institution.toString() : " and " + institution.toString());
             }
         }
 
-        if (!"".equals(authors)) {
-            be.setField("author", authors);
+        if (!authors.isEmpty()) {
+            be.setField("author", String.join(" and ", authors));
         }
-        if (!"".equals(institutions)) {
-            be.setField("institution", institutions);
+        if (institutions.length() > 0) {
+            be.setField("institution", institutions.toString());
         }
     }
 
@@ -330,8 +335,8 @@ public class RepecNepImporter extends ImportFormat {
      * @param be
      * @throws IOException
      */
-    private void parseAbstract(BibEntry be) throws IOException {
-        String theabstract = readMultipleLines();
+    private void parseAbstract(BibEntry be, BufferedReader in) throws IOException {
+        String theabstract = readMultipleLines(in);
 
         if (!"".equals(theabstract)) {
             be.setField("abstract", theabstract);
@@ -344,11 +349,12 @@ public class RepecNepImporter extends ImportFormat {
      * @param be
      * @throws IOException
      */
-    private void parseAdditionalFields(BibEntry be, boolean multilineUrlFieldAllowed) throws IOException {
+    private void parseAdditionalFields(BibEntry be, boolean multilineUrlFieldAllowed, BufferedReader in)
+            throws IOException {
 
         // one empty line is possible before fields start
         if ((this.lastLine != null) && "".equals(this.lastLine.trim())) {
-            readLine();
+            readLine(in);
         }
 
         // read other fields
@@ -361,17 +367,17 @@ public class RepecNepImporter extends ImportFormat {
 
             // parse keywords field
             if ("Keywords".equals(keyword)) {
-                String content = readMultipleLines();
+                String content = readMultipleLines(in);
                 String[] keywords = content.split("[,;]");
                 be.addKeywords(Arrays.asList(keywords));
                 // parse JEL field
             } else if ("JEL".equals(keyword)) {
-                be.setField("jel", readMultipleLines());
+                be.setField("jel", readMultipleLines(in));
 
                 // parse date field
             } else if (keyword.startsWith("Date")) {
                 Date date = null;
-                String content = readMultipleLines();
+                String content = readMultipleLines(in);
                 String[] recognizedDateFormats = new String[] {"yyyy-MM-dd", "yyyy-MM", "yyyy"};
                 int i = 0;
                 for (; (i < recognizedDateFormats.length) && (date == null); i++) {
@@ -386,26 +392,29 @@ public class RepecNepImporter extends ImportFormat {
                 cal.setTime(date == null ? new Date() : date);
                 be.setField("year", String.valueOf(cal.get(Calendar.YEAR)));
                 if ((date != null) && recognizedDateFormats[i - 1].contains("MM")) {
-                    be.setField("month", String.valueOf(cal.get(Calendar.MONTH)));
+                    be.setField("month", String.valueOf(cal.get(Calendar.MONTH) + 1));
+                }
+                if ((date != null) && recognizedDateFormats[i - 1].contains("dd")) {
+                    be.setField("day", String.valueOf(cal.get(Calendar.DAY_OF_MONTH)));
                 }
 
                 // parse URL field
             } else if (keyword.startsWith("URL")) {
                 String content;
                 if (multilineUrlFieldAllowed) {
-                    content = readMultipleLines();
+                    content = readMultipleLines(in);
                 } else {
                     content = this.lastLine;
-                    readLine();
+                    readLine(in);
                 }
                 be.setField("url", content);
 
                 // authors field
             } else if (keyword.startsWith("By")) {
                 // parse authors
-                parseAuthors(be);
+                parseAuthors(be, in);
             } else {
-                readLine();
+                readLine(in);
             }
         }
     }
@@ -424,14 +433,12 @@ public class RepecNepImporter extends ImportFormat {
      */
     @Override
     public List<BibEntry> importEntries(InputStream stream, OutputPrinter status) throws IOException {
-        ArrayList<BibEntry> bibitems = new ArrayList<>();
+        List<BibEntry> bibitems = new ArrayList<>();
         String paperNoStr = null;
         this.line = 0;
 
-        try {
-            this.in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream));
-
-            readLine(); // skip header and editor information
+        try (BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
+            readLine(in); // skip header and editor information
             while (this.lastLine != null) {
 
                 if (this.lastLine.startsWith("-----------------------------")) {
@@ -439,27 +446,27 @@ public class RepecNepImporter extends ImportFormat {
                 }
                 if (isStartOfWorkingPaper()) {
                     BibEntry be = new BibEntry(IdGenerator.next());
-                    be.setType(EntryTypes.getType("techreport"));
+                    be.setType("techreport");
                     paperNoStr = this.lastLine.substring(0, this.lastLine.indexOf('.'));
-                    parseTitleString(be);
+                    parseTitleString(be, in);
                     if (startsWithKeyword(RepecNepImporter.RECOGNIZED_FIELDS)) {
-                        parseAdditionalFields(be, false);
+                        parseAdditionalFields(be, false, in);
                     } else {
-                        readLine(); // skip empty line
-                        parseAuthors(be);
-                        readLine(); // skip empty line
+                        readLine(in); // skip empty line
+                        parseAuthors(be, in);
+                        readLine(in); // skip empty line
                     }
                     if (!startsWithKeyword(RepecNepImporter.RECOGNIZED_FIELDS)) {
-                        parseAbstract(be);
+                        parseAbstract(be, in);
                     }
-                    parseAdditionalFields(be, true);
+                    parseAdditionalFields(be, true, in);
 
                     bibitems.add(be);
                     paperNoStr = null;
 
                 } else {
                     this.preLine = this.lastLine;
-                    readLine();
+                    readLine(in);
                 }
             }
 

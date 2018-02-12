@@ -23,7 +23,6 @@ import java.util.*;
 import net.sf.jabref.importer.ImportFormatReader;
 import net.sf.jabref.importer.OutputPrinter;
 import net.sf.jabref.model.entry.BibEntry;
-import net.sf.jabref.bibtex.EntryTypes;
 
 /**
  * Imports a Biblioscape Tag File. The format is described on
@@ -69,11 +68,10 @@ public class BiblioscapeImporter extends ImportFormat {
         BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream));
         String line;
         Map<String, String> hm = new HashMap<>();
-        Map<String, StringBuffer> lines = new HashMap<>();
-        StringBuffer previousLine = null;
+        Map<String, StringBuilder> lines = new HashMap<>();
+        StringBuilder previousLine = null;
         while ((line = in.readLine()) != null) {
-            if (line.isEmpty())
-            {
+            if (line.isEmpty()) {
                 continue; // ignore empty lines, e.g. at file
             }
             // end
@@ -85,9 +83,9 @@ public class BiblioscapeImporter extends ImportFormat {
                 String address = null;
                 String titleST = null;
                 String titleTI = null;
-                Vector<String> comments = new Vector<>();
+                List<String> comments = new ArrayList<>();
                 // add item
-                for (Map.Entry<String, StringBuffer> entry : lines.entrySet()) {
+                for (Map.Entry<String, StringBuilder> entry : lines.entrySet()) {
                     if ("AU".equals(entry.getKey())) {
                         hm.put("author", entry.getValue()
                                 .toString());
@@ -251,8 +249,7 @@ public class BiblioscapeImporter extends ImportFormat {
                         hm.put("title", titleTI);
                     }
                 } else {
-                    if (titleST != null)
-                    {
+                    if (titleST != null) {
                         hm.put("booktitle", titleST); // should not
                     }
                     // happen, I
@@ -273,14 +270,9 @@ public class BiblioscapeImporter extends ImportFormat {
                 }
 
                 if (!comments.isEmpty()) { // set comment if present
-                    StringBuilder s = new StringBuilder();
-                    for (int i = 0; i < comments.size(); ++i) {
-                        s.append(i > 0 ? "; " : "").append(comments.elementAt(i));
-                    }
-                    hm.put("comment", s.toString());
+                    hm.put("comment", String.join(";", comments));
                 }
-                BibEntry b = new BibEntry(DEFAULT_BIBTEXENTRY_ID,
-                        EntryTypes.getTypeOrDefault(bibtexType));
+                BibEntry b = new BibEntry(DEFAULT_BIBTEXENTRY_ID, bibtexType);
                 b.setField(hm);
                 bibItems.add(b);
 
@@ -293,13 +285,13 @@ public class BiblioscapeImporter extends ImportFormat {
             // new key
             if (line.startsWith("--") && (line.length() >= 7)
                     && "-- ".equals(line.substring(4, 7))) {
-                lines.put(line.substring(2, 4), previousLine = new StringBuffer(line
-                        .substring(7)));
+                previousLine = new StringBuilder(line.substring(7));
+                lines.put(line.substring(2, 4), previousLine);
                 continue;
             }
             // continuation (folding) of previous line
             if (previousLine == null) {
-                return null;
+                return Collections.emptyList();
             }
             previousLine.append(line.trim());
         }

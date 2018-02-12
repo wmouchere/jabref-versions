@@ -63,7 +63,7 @@ public class GVKFetcher implements EntryFetcher {
 
     @Override
     public String getHelpPage() {
-        return "GVKHelp.html";
+        return "GVKHelp";
     }
 
     @Override
@@ -97,7 +97,7 @@ public class GVKFetcher implements EntryFetcher {
             }
         }
 
-        String gvkQuery = "";
+        String gvkQuery;
         if (searchKeys.containsKey(qterms[0])) {
             gvkQuery = processComplexQuery(qterms);
         } else {
@@ -140,14 +140,13 @@ public class GVKFetcher implements EntryFetcher {
                     result = result.concat("%20");
                 }
                 String encoded = s[x];
-                encoded = encoded.replaceAll(",", "%2C");
-                encoded = encoded.replaceAll("\\?", "%3F");
+                encoded = encoded.replace(",", "%2C").replace("?", "%3F");
 
                 result = result.concat(encoded);
                 lastWasKey = false;
             }
         }
-        return (result);
+        return result;
     }
 
     private List<BibEntry> fetchGVK(String query) {
@@ -156,25 +155,22 @@ public class GVKFetcher implements EntryFetcher {
         String urlPrefix = "http://sru.gbv.de/gvk?version=1.1&operation=searchRetrieve&query=";
         String urlSuffix = "&maximumRecords=50&recordSchema=picaxml&sortKeys=Year%2C%2C1";
 
-        String searchstring = (urlPrefix + query + urlSuffix);
+        String searchstring = urlPrefix + query + urlSuffix;
         LOGGER.debug(searchstring);
         try {
-            URI uri = null;
-            try {
-                uri = new URI(searchstring);
-            } catch (URISyntaxException e) {
-                LOGGER.error("URI malformed error", e);
-                return Collections.emptyList();
-            }
+            URI uri = new URI(searchstring);
             URL url = uri.toURL();
             try (InputStream is = url.openStream()) {
                 result = (new GVKParser()).parseEntries(is);
             }
+        } catch (URISyntaxException e) {
+            LOGGER.error("URI malformed error", e);
+            return Collections.emptyList();
         } catch (IOException e) {
-            LOGGER.error("GVK plugin: An I/O exception occurred", e);
+            LOGGER.error("GVK: An I/O exception occurred", e);
             return Collections.emptyList();
         } catch (ParserConfigurationException e) {
-            LOGGER.error("GVK plugin: An internal parser error occurred", e);
+            LOGGER.error("GVK: An internal parser error occurred", e);
             return Collections.emptyList();
         } catch (SAXException e) {
             LOGGER.error("An internal parser error occurred", e);

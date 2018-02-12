@@ -16,6 +16,7 @@ package net.sf.jabref.logic.autocompleter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -31,12 +32,6 @@ public abstract class AbstractAutoCompleter implements AutoCompleter<String> {
     private static final int SHORTEST_WORD_TO_ADD = 4;
     private final AutoCompletePreferences preferences;
 
-
-    public AbstractAutoCompleter(AutoCompletePreferences preferences) {
-        this.preferences = Objects.requireNonNull(preferences);
-    }
-
-
     /**
      * Stores the strings as is.
      */
@@ -50,7 +45,12 @@ public abstract class AbstractAutoCompleter implements AutoCompleter<String> {
     /**
      * Stores for a lowercase string the possible expanded strings.
      */
-    private final HashMap<String, TreeSet<String>> possibleStringsForSearchString = new HashMap<>();
+    private final Map<String, TreeSet<String>> possibleStringsForSearchString = new HashMap<>();
+
+
+    public AbstractAutoCompleter(AutoCompletePreferences preferences) {
+        this.preferences = Objects.requireNonNull(preferences);
+    }
 
     /**
      * {@inheritDoc}

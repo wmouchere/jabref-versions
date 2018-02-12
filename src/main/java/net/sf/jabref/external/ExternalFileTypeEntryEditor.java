@@ -127,7 +127,7 @@ public class ExternalFileTypeEntryEditor {
         if (OS.WINDOWS) {
             application.getDocument().addDocumentListener(new DocumentListener() {
 
-                private void handle(DocumentEvent e) {
+                private void handle() {
                     if (application.getText().isEmpty()) {
                         useDefault.setSelected(true);
                     } else {
@@ -136,18 +136,18 @@ public class ExternalFileTypeEntryEditor {
                 }
 
                 @Override
-                public void insertUpdate(DocumentEvent e) {
-                    handle(e);
+                public void insertUpdate(DocumentEvent documentEvent) {
+                    handle();
                 }
 
                 @Override
                 public void removeUpdate(DocumentEvent documentEvent) {
-                    handle(documentEvent);
+                    handle();
                 }
 
                 @Override
                 public void changedUpdate(DocumentEvent documentEvent) {
-                    handle(documentEvent);
+                    handle();
                 }
             });
         }
@@ -158,10 +158,10 @@ public class ExternalFileTypeEntryEditor {
             title = newFileTitle;
         }
 
-        if (dParent != null) {
-            diag = new JDialog(dParent, title, true);
-        } else {
+        if (dParent == null) {
             diag = new JDialog(fParent, title, true);
+        } else {
+            diag = new JDialog(dParent, title, true);
         }
         diag.getContentPane().add(builder.getPanel(), BorderLayout.CENTER);
         diag.getContentPane().add(bb.getPanel(), BorderLayout.SOUTH);
@@ -170,10 +170,10 @@ public class ExternalFileTypeEntryEditor {
         BrowseListener browse = new BrowseListener(application);
         browseBut.addActionListener(browse);
 
-        if (dParent != null) {
-            diag.setLocationRelativeTo(dParent);
-        } else {
+        if (dParent == null) {
             diag.setLocationRelativeTo(fParent);
+        } else {
+            diag.setLocationRelativeTo(dParent);
         }
 
         setValues(entry);
@@ -200,7 +200,7 @@ public class ExternalFileTypeEntryEditor {
         name.setText(entry.getName());
         extension.setText(entry.getExtension());
         mimeType.setText(entry.getMimeType());
-        application.setText(entry.getOpenWith());
+        application.setText(entry.getOpenWithApplication());
         icon.setIcon(entry.getIcon());
         if (application.getText().isEmpty()) {
             useDefault.setSelected(true);
@@ -220,9 +220,7 @@ public class ExternalFileTypeEntryEditor {
             fileTypeEntry.setExtension(ext);
         }
 
-        if (!OS.WINDOWS) {
-            fileTypeEntry.setOpenWith(application.getText().trim());
-        } else {
+        if (OS.WINDOWS) {
             // On Windows, store application as empty if the "Default" option is selected,
             // or if the application name is empty:
             if (useDefault.isSelected() || application.getText().trim().isEmpty()) {
@@ -230,6 +228,8 @@ public class ExternalFileTypeEntryEditor {
             } else {
                 fileTypeEntry.setOpenWith(application.getText().trim());
             }
+        } else {
+            fileTypeEntry.setOpenWith(application.getText().trim());
         }
     }
 

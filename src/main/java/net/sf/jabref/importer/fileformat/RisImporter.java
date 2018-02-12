@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import net.sf.jabref.bibtex.EntryTypes;
 import net.sf.jabref.importer.ImportFormatReader;
 import net.sf.jabref.importer.OutputPrinter;
 import net.sf.jabref.model.entry.*;
@@ -36,6 +35,8 @@ import net.sf.jabref.model.entry.*;
  * field "comment".
  */
 public class RisImporter extends ImportFormat {
+
+    private static final Pattern RECOGNIZED_FORMAT_PATTERN = Pattern.compile("TY  - .*");
 
     /**
      * Return the name of this import format.
@@ -61,16 +62,15 @@ public class RisImporter extends ImportFormat {
     public boolean isRecognizedFormat(InputStream stream) throws IOException {
 
         // Our strategy is to look for the "AU  - *" line.
-        BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream));
-        Pattern pat1 = Pattern.compile("TY  - .*");
+        try (BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
 
-        String str;
-        while ((str = in.readLine()) != null) {
-            if (pat1.matcher(str).find()) {
-                return true;
+            String str;
+            while ((str = in.readLine()) != null) {
+                if (RECOGNIZED_FORMAT_PATTERN.matcher(str).find()) {
+                    return true;
+                }
             }
         }
-
         return false;
     }
 
@@ -80,21 +80,20 @@ public class RisImporter extends ImportFormat {
      */
     @Override
     public List<BibEntry> importEntries(InputStream stream, OutputPrinter status) throws IOException {
-        ArrayList<BibEntry> bibitems = new ArrayList<>();
+        List<BibEntry> bibitems = new ArrayList<>();
         StringBuilder sb = new StringBuilder();
-        BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream));
-        String str;
-        while ((str = in.readLine()) != null) {
-            sb.append(str);
-            sb.append('\n');
+        try (BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
+            String str;
+            while ((str = in.readLine()) != null) {
+                sb.append(str);
+                sb.append('\n');
+            }
         }
-        String[] entries = sb.toString().replaceAll("\u2013", "-").replaceAll("\u2014", "--").replaceAll("\u2015", "--").split("ER  -.*\\n");
+
+        String[] entries = sb.toString().replace("\u2013", "-").replace("\u2014", "--").replace("\u2015", "--")
+                .split("ER  -.*\\n");
 
         for (String entry1 : entries) {
-
-            if (entry1.trim().isEmpty()) {
-                continue;
-            }
 
             String type = "";
             String author = "";
@@ -157,11 +156,11 @@ public class RisImporter extends ImportFormat {
                                 hm.put("title", oldVal + ": " + val);
                             }
                         }
-                    }
-                    // =
-                    // val;
-                    else if ("T2".equals(lab) || "T3".equals(lab) || "BT".equals(lab)) {
+                        hm.put("title", hm.get("title").replaceAll("\\s+", " ")); // Normalize whitespaces
+                    } else if ("T2".equals(lab) || "BT".equals(lab)) {
                         hm.put("booktitle", val);
+                    } else if ("T3".equals(lab)) {
+                        hm.put("series", val);
                     } else if ("AU".equals(lab) || "A1".equals(lab)) {
                         if ("".equals(author)) {
                             author = val;
@@ -192,6 +191,9 @@ public class RisImporter extends ImportFormat {
                         hm.put("address", val);
                     } else if ("EP".equals(lab)) {
                         endPage = val;
+                        if (!endPage.isEmpty()) {
+                            endPage = "--" + endPage;
+                        }
                     } else if ("SN".equals(lab)) {
                         hm.put("issn", val);
                     } else if ("VL".equals(lab)) {
@@ -231,7 +233,7 @@ public class RisImporter extends ImportFormat {
                         }
                     } else if ("U1".equals(lab) || "U2".equals(lab) || "N1".equals(lab)) {
                         if (!comment.isEmpty()) {
-                            comment = comment + "\n";
+                            comment = comment + " ";
                         }
                         comment = comment + val;
                     }
@@ -248,24 +250,23 @@ public class RisImporter extends ImportFormat {
                 }
                 // fix authors
                 if (!author.isEmpty()) {
-                    author = AuthorList.fixAuthor_lastNameFirst(author);
+                    author = AuthorList.fixAuthorLastNameFirst(author);
                     hm.put("author", author);
                 }
                 if (!editor.isEmpty()) {
-                    editor = AuthorList.fixAuthor_lastNameFirst(editor);
+                    editor = AuthorList.fixAuthorLastNameFirst(editor);
                     hm.put("editor", editor);
                 }
                 if (!comment.isEmpty()) {
                     hm.put("comment", comment);
                 }
 
-                hm.put("pages", startPage + "--" + endPage);
+                hm.put("pages", startPage + endPage);
             }
-            BibEntry b = new BibEntry(DEFAULT_BIBTEXENTRY_ID, EntryTypes
-                    .getTypeOrDefault(type)); // id assumes an existing database so don't
+            BibEntry b = new BibEntry(DEFAULT_BIBTEXENTRY_ID, type); // id assumes an existing database so don't
 
             // Remove empty fields:
-            ArrayList<Object> toRemove = new ArrayList<>();
+            List<Object> toRemove = new ArrayList<>();
             for (Map.Entry<String, String> key : hm.entrySet()) {
                 String content = key.getValue();
                 if ((content == null) || content.trim().isEmpty()) {

@@ -37,9 +37,11 @@ import org.apache.commons.logging.LogFactory;
  * check here for details on the format
  * http://www.ecst.csuchico.edu/~jacobsd/bib/formats/endnote.html
  */
-public class BibteXMLImporter extends ImportFormat {
+public class BibTeXMLImporter extends ImportFormat {
 
-    private static final Log LOGGER = LogFactory.getLog(BibteXMLImporter.class);
+    private static final Log LOGGER = LogFactory.getLog(BibTeXMLImporter.class);
+
+    private static final Pattern START_PATTERN = Pattern.compile("<(bibtex:)?file .*");
 
 
     /**
@@ -67,15 +69,15 @@ public class BibteXMLImporter extends ImportFormat {
     public boolean isRecognizedFormat(InputStream stream) throws IOException {
 
         // Our strategy is to look for the "<bibtex:file *" line.
-        BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream));
-        Pattern pat1 = Pattern.compile("<bibtex:file .*");
-        String str;
-        while ((str = in.readLine()) != null) {
-            if (pat1.matcher(str).find()) {
-                return true;
+        try (BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
+            String str;
+            while ((str = in.readLine()) != null) {
+                if (START_PATTERN.matcher(str).find()) {
+                    return true;
+                }
             }
+            return false;
         }
-        return false;
     }
 
     /**
@@ -101,7 +103,7 @@ public class BibteXMLImporter extends ImportFormat {
             // Start the parser. It reads the file and calls methods of the handler.
             parser.parse(stream, handler);
             // When you're done, report the results stored by your handler object
-            bibItems = handler.getItems();
+            bibItems.addAll(handler.getItems());
 
         } catch (javax.xml.parsers.ParserConfigurationException e) {
             LOGGER.error("Error with XML parser configuration", e);

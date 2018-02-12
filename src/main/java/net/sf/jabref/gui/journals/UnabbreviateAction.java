@@ -15,12 +15,14 @@
 */
 package net.sf.jabref.gui.journals;
 
-import net.sf.jabref.gui.worker.AbstractWorker;
+import net.sf.jabref.Globals;
 import net.sf.jabref.gui.BasePanel;
-import net.sf.jabref.logic.journals.Abbreviations;
-import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.gui.undo.NamedCompound;
+import net.sf.jabref.gui.worker.AbstractWorker;
 import net.sf.jabref.logic.l10n.Localization;
+import net.sf.jabref.model.entry.BibEntry;
+
+import java.util.List;
 
 /**
  * Converts journal abbreviations back to full name for all selected entries.
@@ -37,25 +39,26 @@ public class UnabbreviateAction extends AbstractWorker {
 
     @Override
     public void init() {
-        panel.output("Unabbreviating...");
+        panel.output(Localization.lang("Unabbreviating..."));
     }
 
     @Override
     public void run() {
-        BibEntry[] entries = panel.getSelectedEntries();
+        List<BibEntry> entries = panel.getSelectedEntries();
         if (entries == null) {
             return;
         }
 
-        UndoableUnabbreviator undoableAbbreviator = new UndoableUnabbreviator(Abbreviations.journalAbbrev);
+        UndoableUnabbreviator undoableAbbreviator = new UndoableUnabbreviator(
+                Globals.journalAbbreviationLoader.getRepository());
 
-        NamedCompound ce = new NamedCompound("Unabbreviate journal names");
+        NamedCompound ce = new NamedCompound(Localization.lang("Unabbreviate journal names"));
         int count = 0;
         for (BibEntry entry : entries) {
-            if (undoableAbbreviator.unabbreviate(panel.database(), entry, "journal", ce)) {
+            if (undoableAbbreviator.unabbreviate(panel.getDatabase(), entry, "journal", ce)) {
                 count++;
             }
-            if (undoableAbbreviator.unabbreviate(panel.database(), entry, "journaltitle", ce)) {
+            if (undoableAbbreviator.unabbreviate(panel.getDatabase(), entry, "journaltitle", ce)) {
                 count++;
             }
         }

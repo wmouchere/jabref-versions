@@ -19,6 +19,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
 
 import javax.swing.*;
 
@@ -69,7 +70,8 @@ public class PushToLyx extends AbstractPushToApplication implements PushToApplic
     }
 
     @Override
-    public void pushEntries(BibDatabase database, final BibEntry[] entries, final String keyString, MetaData metaData) {
+    public void pushEntries(BibDatabase database, final List<BibEntry> entries, final String keyString,
+            MetaData metaData) {
 
         couldNotConnect = false;
         couldNotCall = false;
@@ -98,21 +100,17 @@ public class PushToLyx extends AbstractPushToApplication implements PushToApplic
 
         final File lyxpipe = lp;
 
-        JabRefExecutorService.INSTANCE.executeAndWait(new Runnable() {
+        JabRefExecutorService.INSTANCE.executeAndWait((Runnable) () -> {
+            try (FileWriter fw = new FileWriter(lyxpipe); BufferedWriter lyx_out = new BufferedWriter(fw)) {
+                String citeStr;
 
-            @Override
-            public void run() {
-                try (FileWriter fw = new FileWriter(lyxpipe); BufferedWriter lyx_out = new BufferedWriter(fw)) {
-                    String citeStr;
+                citeStr = "LYXCMD:sampleclient:citation-insert:" + keyString;
+                lyx_out.write(citeStr + "\n");
 
-                    citeStr = "LYXCMD:sampleclient:citation-insert:" + keyString;
-                    lyx_out.write(citeStr + "\n");
-
-                    lyx_out.close();
-                    fw.close();
-                } catch (IOException excep) {
-                    couldNotCall = true;
-                }
+                lyx_out.close();
+                fw.close();
+            } catch (IOException excep) {
+                couldNotCall = true;
             }
         });
     }

@@ -62,18 +62,18 @@ public class MedlineImporter extends ImportFormat {
     @Override
     public boolean isRecognizedFormat(InputStream stream) throws IOException {
 
-        BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream));
-        String str;
-        int i = 0;
-        while (((str = in.readLine()) != null) && (i < 50)) {
+        try (BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
+            String str;
+            int i = 0;
+            while (((str = in.readLine()) != null) && (i < 50)) {
 
-            if (str.toLowerCase().contains("<pubmedarticle>")) {
-                return true;
+                if (str.toLowerCase().contains("<pubmedarticle>")) {
+                    return true;
+                }
+
+                i++;
             }
-
-            i++;
         }
-
         return false;
     }
 
@@ -112,7 +112,7 @@ public class MedlineImporter extends ImportFormat {
         parserFactory.setNamespaceAware(true);
 
         // Now create a SAXParser object
-        List<BibEntry> bibItems = null;
+        List<BibEntry> bibItems = new ArrayList<>();
         try {
             SAXParser parser = parserFactory.newSAXParser(); // May throw
             // exceptions
@@ -134,7 +134,7 @@ public class MedlineImporter extends ImportFormat {
 
             // When you're done, report the results stored by your handler
             // object
-            bibItems = handler.getItems();
+            bibItems.addAll(handler.getItems());
         } catch (javax.xml.parsers.ParserConfigurationException e1) {
             LOGGER.error("Error with XML parser configuration", e1);
             status.showMessage(e1.getLocalizedMessage());

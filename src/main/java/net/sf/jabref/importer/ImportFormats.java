@@ -17,6 +17,7 @@ package net.sf.jabref.importer;
 
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.util.Arrays;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -37,21 +38,12 @@ import net.sf.jabref.gui.keyboard.KeyBinding;
 import net.sf.jabref.importer.fileformat.ImportFormat;
 import net.sf.jabref.logic.l10n.Localization;
 
-/**
- * Created by IntelliJ IDEA.
- * User: alver
- * Date: Oct 22, 2006
- * Time: 12:06:09 PM
- * To change this template use File | Settings | File Templates.
- */
 public class ImportFormats {
-
     private static final Log LOGGER = LogFactory.getLog(ImportFormats.class);
-
 
     private static JFileChooser createImportFileChooser(String currentDir) {
 
-        SortedSet<ImportFormat> importers = Globals.importFormatReader.getImportFormats();
+        SortedSet<ImportFormat> importers = Globals.IMPORT_FORMAT_READER.getImportFormats();
 
         String lastUsedFormat = Globals.prefs.get(JabRefPreferences.LAST_USED_IMPORT);
         FileFilter defaultFilter = null;
@@ -103,8 +95,7 @@ public class ImportFormats {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                JFileChooser fc = ImportFormats.createImportFileChooser
-                        (Globals.prefs.get(JabRefPreferences.WORKING_DIRECTORY));
+                JFileChooser fc = ImportFormats.createImportFileChooser(Globals.prefs.get(JabRefPreferences.IMPORT_WORKING_DIRECTORY));
                 fc.showOpenDialog(frame);
                 File file = fc.getSelectedFile();
                 if (file == null) {
@@ -127,7 +118,7 @@ public class ImportFormats {
                     }
                     ImportMenuItem imi = new ImportMenuItem(frame,
                             openInNew, format);
-                    imi.automatedImport(new String[] {file.getAbsolutePath()});
+                    imi.automatedImport(Arrays.asList(file.getAbsolutePath()));
 
                     // Make sure we remember which filter was used, to set the default
                     // for next time:

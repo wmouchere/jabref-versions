@@ -1,21 +1,16 @@
 package net.sf.jabref.logic;
 
-import net.sf.jabref.Globals;
 import net.sf.jabref.JabRefPreferences;
+import net.sf.jabref.model.database.BibDatabaseMode;
 import net.sf.jabref.model.entry.CustomEntryType;
-import net.sf.jabref.bibtex.EntryTypes;
+import net.sf.jabref.model.EntryTypes;
 import net.sf.jabref.model.entry.EntryType;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 public class CustomEntryTypesManager {
-    private static final Log LOGGER = LogFactory.getLog(CustomEntryTypesManager.class);
 
     public static final List<EntryType> ALL = new ArrayList<>();
     /**
@@ -38,11 +33,11 @@ public class CustomEntryTypesManager {
      * JabRefFrame when the program closes.
      */
     public static void saveCustomEntryTypes(JabRefPreferences prefs) {
-        Iterator<String> iterator = EntryTypes.getAllTypes().iterator();
+        Iterator<EntryType> iterator = EntryTypes.getAllValues(BibDatabaseMode.BIBTEX).iterator();
         int number = 0;
 
         while (iterator.hasNext()) {
-            EntryType entryType = EntryTypes.getType(iterator.next());
+            EntryType entryType = iterator.next();
             if (entryType instanceof CustomEntryType) {
                 // Store this entry type.
                 prefs.storeCustomEntryType((CustomEntryType) entryType, number);
@@ -55,37 +50,22 @@ public class CustomEntryTypesManager {
         prefs.purgeCustomEntryTypes(number);
     }
 
-    public static void save(CustomEntryType entry, Writer out) throws IOException {
-        out.write(Globals.NEWLINE + Globals.NEWLINE);
-        out.write("@comment{");
-        out.write(CustomEntryType.ENTRYTYPE_FLAG);
-        out.write(entry.getName());
-        out.write(": req[");
-        out.write(entry.getRequiredFieldsString());
-        out.write("] opt[");
-        out.write(String.join(";", entry.getOptionalFields()));
-        out.write("]}");
-    }
-
     public static CustomEntryType parseEntryType(String comment) {
-        try {
-            String rest;
-            rest = comment.substring(CustomEntryType.ENTRYTYPE_FLAG.length());
-            int nPos = rest.indexOf(':');
-            String name = rest.substring(0, nPos);
-            rest = rest.substring(nPos + 2);
-
-            int rPos = rest.indexOf(']');
-            if (rPos < 4) {
-                throw new IndexOutOfBoundsException();
-            }
-            String reqFields = rest.substring(4, rPos);
-            int oPos = rest.indexOf(']', rPos + 1);
-            String optFields = rest.substring(rPos + 6, oPos);
-            return new CustomEntryType(name, reqFields, optFields);
-        } catch (IndexOutOfBoundsException ex) {
-            LOGGER.info("Ill-formed entrytype comment in BibTeX file.", ex);
+        String rest = comment.substring(CustomEntryType.ENTRYTYPE_FLAG.length());
+        int indexEndOfName = rest.indexOf(':');
+        if(indexEndOfName < 0) {
             return null;
         }
+        String fieldsDescription = rest.substring(indexEndOfName + 2);
+
+        int indexEndOfRequiredFields = fieldsDescription.indexOf(']');
+        int indexEndOfOptionalFields = fieldsDescription.indexOf(']', indexEndOfRequiredFields + 1);
+        if (indexEndOfRequiredFields < 4 || indexEndOfOptionalFields < indexEndOfRequiredFields + 6) {
+            return null;
+        }
+        String name = rest.substring(0, indexEndOfName);
+        String reqFields = fieldsDescription.substring(4, indexEndOfRequiredFields);
+        String optFields = fieldsDescription.substring(indexEndOfRequiredFields + 6, indexEndOfOptionalFields);
+        return new CustomEntryType(name, reqFields, optFields);
     }
 }

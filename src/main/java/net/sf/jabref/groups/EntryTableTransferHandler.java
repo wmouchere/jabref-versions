@@ -26,6 +26,7 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,11 +39,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import net.sf.jabref.gui.BasePanel;
-import net.sf.jabref.Globals;
 import net.sf.jabref.JabRefExecutorService;
 import net.sf.jabref.gui.JabRefFrame;
 import net.sf.jabref.external.DroppedFileHandler;
 import net.sf.jabref.external.ExternalFileType;
+import net.sf.jabref.external.ExternalFileTypes;
 import net.sf.jabref.external.TransferableFileLinkSelection;
 import net.sf.jabref.gui.maintable.MainTable;
 import net.sf.jabref.importer.ImportMenuItem;
@@ -147,7 +148,7 @@ public class EntryTableTransferHandler extends TransferHandler {
             }
         } catch (IOException ioe) {
             LOGGER.error("Failed to read dropped data", ioe);
-        } catch (UnsupportedFlavorException ufe) {
+        } catch (UnsupportedFlavorException | ClassCastException ufe) {
             LOGGER.error("Drop type error", ufe);
         }
 
@@ -237,7 +238,7 @@ public class EntryTableTransferHandler extends TransferHandler {
         // System.out.println("importing from " + tmpfile.getAbsolutePath());
 
         ImportMenuItem importer = new ImportMenuItem(frame, false);
-        importer.automatedImport(new String[] {tmpfile.getAbsolutePath()});
+        importer.automatedImport(Arrays.asList(tmpfile.getAbsolutePath()));
 
         return true;
     }
@@ -252,7 +253,7 @@ public class EntryTableTransferHandler extends TransferHandler {
      */
     public static List<File> getFilesFromDraggedFilesString(String s) {
         // Split into lines:
-        String[] lines = s.replaceAll("\r", "").split("\n");
+        String[] lines = s.replace("\r", "").split("\n");
         List<File> files = new ArrayList<>();
         for (String line1 : lines) {
             String line = line1;
@@ -324,9 +325,10 @@ public class EntryTableTransferHandler extends TransferHandler {
 
             @Override
             public void run() {
-                final ImportPdfFilesResult importRes = new PdfImporter(frame, panel, entryTable, dropRow).importPdfFiles(fileNames, frame);
-                if (importRes.noPdfFiles.length > 0) {
-                    loadOrImportFiles(importRes.noPdfFiles, dropRow);
+                final ImportPdfFilesResult importRes = new PdfImporter(frame, panel, entryTable, dropRow)
+                        .importPdfFiles(fileNames);
+                if (!importRes.getNoPdfFiles().isEmpty()) {
+                    loadOrImportFiles(importRes.getNoPdfFiles(), dropRow);
                 }
             }
         });
@@ -341,7 +343,7 @@ public class EntryTableTransferHandler extends TransferHandler {
      * @param fileNames The names of the files to open.
      * @param dropRow success status for the operation
      */
-    private void loadOrImportFiles(String[] fileNames, int dropRow) {
+    private void loadOrImportFiles(List<String> fileNames, int dropRow) {
 
         OpenDatabaseAction openAction = new OpenDatabaseAction(frame, false);
         List<String> notBibFiles = new ArrayList<>();
@@ -349,7 +351,7 @@ public class EntryTableTransferHandler extends TransferHandler {
         for (String fileName : fileNames) {
             // Find the file's extension, if any:
             Optional<String> extension = FileUtil.getFileExtension(fileName);
-            ExternalFileType fileType = null;
+            Optional<ExternalFileType> fileType;
 
             if (extension.isPresent() && "bib".equals(extension.get())) {
                 // we assume that it is a BibTeX file.
@@ -358,26 +360,20 @@ public class EntryTableTransferHandler extends TransferHandler {
                 continue;
             }
 
-            fileType = Globals.prefs.getExternalFileTypeByExt(extension.orElse(""));
+            fileType = ExternalFileTypes.getInstance().getExternalFileTypeByExt(extension.orElse(""));
             /*
              * This is a linkable file. If the user dropped it on an entry, we
              * should offer options for autolinking to this files:
              *
              * TODO we should offer an option to highlight the row the user is on too.
              */
-            if ((fileType != null) && (dropRow >= 0)) {
-
-                /*
-                 * TODO: need to signal if this is a local or autodownloaded
-                 * file
-                 */
-                boolean local = true;
+            if ((fileType.isPresent()) && (dropRow >= 0)) {
 
                 /*
                  * TODO: make this an instance variable?
                  */
                 DroppedFileHandler dfh = new DroppedFileHandler(frame, panel);
-                dfh.handleDroppedfile(fileName, fileType, local, entryTable, dropRow);
+                dfh.handleDroppedfile(fileName, fileType.get(), entryTable, dropRow);
 
                 continue;
             }
@@ -387,13 +383,10 @@ public class EntryTableTransferHandler extends TransferHandler {
         openAction.openFilesAsStringList(bibFiles, true);
 
         if (!notBibFiles.isEmpty()) {
-            String[] toImport = new String[notBibFiles.size()];
-            notBibFiles.toArray(toImport);
-
             // Import into new if entryTable==null, otherwise into current
             // database:
             ImportMenuItem importer = new ImportMenuItem(frame, entryTable == null);
-            importer.automatedImport(toImport);
+            importer.automatedImport(notBibFiles);
         }
     }
 
@@ -408,7 +401,7 @@ public class EntryTableTransferHandler extends TransferHandler {
 
         // Import into new if entryTable==null, otherwise into current database:
         ImportMenuItem importer = new ImportMenuItem(frame, entryTable == null);
-        importer.automatedImport(new String[] {tmpfile.getAbsolutePath()});
+        importer.automatedImport(Arrays.asList(tmpfile.getAbsolutePath()));
 
         return true;
     }

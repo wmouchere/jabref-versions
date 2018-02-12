@@ -15,37 +15,36 @@
  */
 package net.sf.jabref.gui.preftabs;
 
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.event.ActionEvent;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import javax.swing.table.AbstractTableModel;
-import javax.swing.table.TableColumnModel;
-import javax.swing.table.TableModel;
-
-import net.sf.jabref.*;
+import com.jgoodies.forms.builder.DefaultFormBuilder;
+import com.jgoodies.forms.layout.CellConstraints;
+import com.jgoodies.forms.layout.FormLayout;
+import net.sf.jabref.JabRefPreferences;
+import net.sf.jabref.bibtex.BibtexSingleField;
+import net.sf.jabref.bibtex.InternalBibtexFields;
 import net.sf.jabref.external.ExternalFileType;
-import net.sf.jabref.gui.BasePanel;
-import net.sf.jabref.gui.GUIGlobals;
-import net.sf.jabref.gui.IconTheme;
-import net.sf.jabref.gui.JabRefFrame;
+import net.sf.jabref.external.ExternalFileTypes;
+import net.sf.jabref.gui.*;
+import net.sf.jabref.gui.help.HelpFiles;
 import net.sf.jabref.gui.help.HelpAction;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.specialfields.SpecialFieldsUtils;
 
-import com.jgoodies.forms.builder.DefaultFormBuilder;
-import com.jgoodies.forms.layout.CellConstraints;
-import com.jgoodies.forms.layout.FormLayout;
+import javax.swing.*;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableModel;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.util.*;
+import java.util.List;
 
 class TableColumnsTab extends JPanel implements PrefsTab {
+
+    private static final Log LOGGER = LogFactory.getLog(TableColumnsTab.class);
 
     private final JabRefPreferences prefs;
     private boolean tableChanged;
@@ -94,14 +93,14 @@ class TableColumnsTab extends JPanel implements PrefsTab {
         private int length;
 
 
-        public TableRow(String name) {
-            this.name = name;
-            length = GUIGlobals.DEFAULT_FIELD_LENGTH;
+        public TableRow() {
+            name = "";
+            length = BibtexSingleField.DEFAULT_FIELD_LENGTH;
         }
 
-        public TableRow(int length) {
-            this.length = length;
-            name = "";
+        public TableRow(String name) {
+            this.name = name;
+            length = BibtexSingleField.DEFAULT_FIELD_LENGTH;
         }
 
         public TableRow(String name, int length) {
@@ -151,14 +150,15 @@ class TableColumnsTab extends JPanel implements PrefsTab {
 
             @Override
             public Object getValueAt(int row, int column) {
-                if (row == 0) {
-                    return column == 0 ? GUIGlobals.NUMBER_COL : String.valueOf(ncWidth);
+                int internalRow = row;
+                if (internalRow == 0) {
+                    return column == 0 ? InternalBibtexFields.NUMBER_COL : String.valueOf(ncWidth);
                 }
-                row--;
-                if (row >= tableRows.size()) {
+                internalRow--;
+                if (internalRow >= tableRows.size()) {
                     return "";
                 }
-                Object rowContent = tableRows.get(row);
+                Object rowContent = tableRows.get(internalRow);
                 if (rowContent == null) {
                     return "";
                 }
@@ -208,7 +208,7 @@ class TableColumnsTab extends JPanel implements PrefsTab {
                 if (col == 0) {
                     rowContent.setName(value.toString());
                     if ("".equals(getValueAt(row, 1))) {
-                        setValueAt(String.valueOf(GUIGlobals.DEFAULT_FIELD_LENGTH), row, 1);
+                        setValueAt(String.valueOf(BibtexSingleField.DEFAULT_FIELD_LENGTH), row, 1);
                     }
                 }
                 else {
@@ -239,7 +239,7 @@ class TableColumnsTab extends JPanel implements PrefsTab {
         colSetup.setPreferredScrollableViewportSize(new Dimension(250, 200));
         sp.setMinimumSize(new Dimension(250, 300));
         tabPanel.add(sp, BorderLayout.CENTER);
-        JToolBar toolBar = new JToolBar(SwingConstants.VERTICAL);
+        JToolBar toolBar = new OSXCompatibleToolbar(SwingConstants.VERTICAL);
         toolBar.setFloatable(false);
         AddRowAction addRow = new AddRowAction();
         DeleteRowAction deleteRow = new DeleteRowAction();
@@ -261,53 +261,28 @@ class TableColumnsTab extends JPanel implements PrefsTab {
         preferUrlDoiGroup.add(preferUrl);
         preferUrlDoiGroup.add(preferDoi);
 
-        urlColumn.addChangeListener(new ChangeListener() {
-
-            @Override
-            public void stateChanged(ChangeEvent arg0) {
-                preferUrl.setEnabled(urlColumn.isSelected());
-                preferDoi.setEnabled(urlColumn.isSelected());
-            }
+        urlColumn.addChangeListener(arg0 -> {
+            preferUrl.setEnabled(urlColumn.isSelected());
+            preferDoi.setEnabled(urlColumn.isSelected());
         });
         arxivColumn = new JCheckBox(Localization.lang("Show ArXiv column"));
 
-        extraFileColumns = new JCheckBox(Localization.lang("Show Extra columns"));
-        extraFileColumns.addChangeListener(new ChangeListener() {
-
-            @Override
-            public void stateChanged(ChangeEvent arg0) {
-                listOfFileColumns.setEnabled(extraFileColumns.isSelected());
-            }
-        });
-        ExternalFileType[] fileTypes = Globals.prefs.getExternalFileTypeSelection();
-        String[] fileTypeNames = new String[fileTypes.length];
-        for (int i = 0; i < fileTypes.length; i++) {
-            fileTypeNames[i] = fileTypes[i].getName();
+        Collection<ExternalFileType> fileTypes = ExternalFileTypes.getInstance().getExternalFileTypeSelection();
+        String[] fileTypeNames = new String[fileTypes.size()];
+        int i = 0;
+        for (ExternalFileType fileType : fileTypes) {
+            fileTypeNames[i++] = fileType.getName();
         }
         listOfFileColumns = new JList<>(fileTypeNames);
         JScrollPane listOfFileColumnsScrollPane = new JScrollPane(listOfFileColumns);
         listOfFileColumns.setVisibleRowCount(3);
+        extraFileColumns = new JCheckBox(Localization.lang("Show Extra columns"));
+        extraFileColumns.addChangeListener(arg0 -> listOfFileColumns.setEnabled(extraFileColumns.isSelected()));
 
         /*** begin: special table columns and special fields ***/
 
-        JButton helpButton = new HelpAction(frame.helpDiag, GUIGlobals.specialFieldsHelp, Localization.lang("Help on special fields")).getIconButton();
+        JButton helpButton = new HelpAction(Localization.lang("Help on special fields"), HelpFiles.specialFieldsHelp).getHelpButton();
 
-        specialFieldsEnabled = new JCheckBox(Localization.lang("Enable special fields"));
-        specialFieldsEnabled.addChangeListener(new ChangeListener() {
-
-            @Override
-            public void stateChanged(ChangeEvent event) {
-                boolean isEnabled = specialFieldsEnabled.isSelected();
-                rankingColumn.setEnabled(isEnabled);
-                qualityColumn.setEnabled(isEnabled);
-                priorityColumn.setEnabled(isEnabled);
-                relevanceColumn.setEnabled(isEnabled);
-                printedColumn.setEnabled(isEnabled);
-                readStatusColumn.setEnabled(isEnabled);
-                syncKeywords.setEnabled(isEnabled);
-                writeSpecialFields.setEnabled(isEnabled);
-            }
-        });
         rankingColumn = new JCheckBox(Localization.lang("Show rank"));
         qualityColumn = new JCheckBox(Localization.lang("Show quality"));
         priorityColumn = new JCheckBox(Localization.lang("Show priority"));
@@ -323,6 +298,19 @@ class TableColumnsTab extends JPanel implements PrefsTab {
         ButtonGroup group = new ButtonGroup();
         group.add(syncKeywords);
         group.add(writeSpecialFields);
+
+        specialFieldsEnabled = new JCheckBox(Localization.lang("Enable special fields"));
+        specialFieldsEnabled.addChangeListener(event -> {
+            boolean isEnabled = specialFieldsEnabled.isSelected();
+            rankingColumn.setEnabled(isEnabled);
+            qualityColumn.setEnabled(isEnabled);
+            priorityColumn.setEnabled(isEnabled);
+            relevanceColumn.setEnabled(isEnabled);
+            printedColumn.setEnabled(isEnabled);
+            readStatusColumn.setEnabled(isEnabled);
+            syncKeywords.setEnabled(isEnabled);
+            writeSpecialFields.setEnabled(isEnabled);
+        });
 
         builder.appendSeparator(Localization.lang("Special table columns"));
         builder.nextLine();
@@ -504,7 +492,7 @@ class TableColumnsTab extends JPanel implements PrefsTab {
             }
             for (int i = 0; i < rows.length; i++) {
                 if (((rows[i] + i) - 1) < tableRows.size()) {
-                    tableRows.add(Math.max(0, (rows[i] + i) - 1), new TableRow(GUIGlobals.DEFAULT_FIELD_LENGTH));
+                    tableRows.add(Math.max(0, (rows[i] + i) - 1), new TableRow());
                 }
             }
             rowCount += rows.length;
@@ -523,7 +511,7 @@ class TableColumnsTab extends JPanel implements PrefsTab {
             super(string, image);
         }
 
-        void swap(int i, int j) {
+        public void swap(int i, int j) {
             if ((i < 0) || (i >= tableRows.size())) {
                 return;
             }
@@ -625,17 +613,13 @@ class TableColumnsTab extends JPanel implements PrefsTab {
                     map.put(name.toLowerCase(), i);
                 }
             }
-            Collections.sort(tableRows, new Comparator<TableRow>() {
-
-                @Override
-                public int compare(TableRow o1, TableRow o2) {
-                    Integer n1 = map.get(o1.getName());
-                    Integer n2 = map.get(o2.getName());
-                    if ((n1 == null) || (n2 == null)) {
-                        return 0;
-                    }
-                    return n1.compareTo(n2);
+            Collections.sort(tableRows, (o1, o2) -> {
+                Integer n1 = map.get(o1.getName());
+                Integer n2 = map.get(o2.getName());
+                if ((n1 == null) || (n2 == null)) {
+                    return 0;
                 }
+                return n1.compareTo(n2);
             });
 
             colSetup.revalidate();
@@ -673,7 +657,7 @@ class TableColumnsTab extends JPanel implements PrefsTab {
                         }
                     }
                 } catch (Throwable ex) {
-                    ex.printStackTrace();
+                    LOGGER.warn("Problem with table columns", ex);
                 }
                 colSetup.revalidate();
                 colSetup.repaint();

@@ -19,13 +19,12 @@ import net.sf.jabref.model.database.BibDatabase;
 import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.groups.UndoableChangeAssignment;
 import net.sf.jabref.logic.l10n.Localization;
-import net.sf.jabref.logic.search.SearchRule;
 import net.sf.jabref.logic.util.strings.QuotedStringTokenizer;
 import net.sf.jabref.logic.util.strings.StringUtil;
 
 import javax.swing.undo.AbstractUndoableEdit;
-import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -78,27 +77,10 @@ public class ExplicitGroup extends AbstractGroup {
      * Called only when created fromString
      */
     private void addEntries(QuotedStringTokenizer tok, BibDatabase db) {
-        BibEntry[] entries;
         while (tok.hasMoreTokens()) {
-            entries = db.getEntriesByKey(StringUtil.unquote(tok.nextToken(), AbstractGroup.QUOTE_CHAR));
-            Collections.addAll(this.entries, entries);
+            List<BibEntry> entries = db.getEntriesByKey(StringUtil.unquote(tok.nextToken(), AbstractGroup.QUOTE_CHAR));
+            this.entries.addAll(entries);
         }
-    }
-
-    @Override
-    public SearchRule getSearchRule() {
-        return new SearchRule() {
-
-            @Override
-            public boolean applyRule(String query, BibEntry bibEntry) {
-                return contains(query, bibEntry);
-            }
-
-            @Override
-            public boolean validateSearchStrings(String query) {
-                return true;
-            }
-        };
     }
 
     @Override
@@ -112,13 +94,13 @@ public class ExplicitGroup extends AbstractGroup {
     }
 
     @Override
-    public AbstractUndoableEdit add(BibEntry[] entries) {
-        if (entries.length == 0) {
+    public AbstractUndoableEdit add(List<BibEntry> entries) {
+        if (entries.isEmpty()) {
             return null; // nothing to do
         }
 
         HashSet<BibEntry> entriesBeforeEdit = new HashSet<>(this.entries);
-        Collections.addAll(this.entries, entries);
+        this.entries.addAll(entries);
 
         return new UndoableChangeAssignment(entriesBeforeEdit, this.entries);
     }
@@ -128,8 +110,8 @@ public class ExplicitGroup extends AbstractGroup {
     }
 
     @Override
-    public AbstractUndoableEdit remove(BibEntry[] entries) {
-        if (entries.length == 0) {
+    public AbstractUndoableEdit remove(List<BibEntry> entries) {
+        if (entries.isEmpty()) {
             return null; // nothing to do
         }
 
@@ -148,11 +130,6 @@ public class ExplicitGroup extends AbstractGroup {
     @Override
     public boolean contains(BibEntry entry) {
         return entries.contains(entry);
-    }
-
-    @Override
-    public boolean contains(String query, BibEntry entry) {
-        return contains(entry);
     }
 
     @Override
@@ -176,27 +153,21 @@ public class ExplicitGroup extends AbstractGroup {
         BibEntry entry;
         String key;
         // compare bibtex keys for all entries that have one
-        for (BibEntry m_entry1 : entries) {
-            entry = m_entry1;
+        for (BibEntry mEntry1 : entries) {
+            entry = mEntry1;
             key = entry.getCiteKey();
             if (key != null) {
                 keys.add(key);
             }
         }
-        for (BibEntry m_entry : other.entries) {
-            entry = m_entry;
+        for (BibEntry mEntry : other.entries) {
+            entry = mEntry;
             key = entry.getCiteKey();
-            if (key != null) {
-                if (!keys.remove(key)) {
-                    return false;
-                }
+            if ((key != null) && !keys.remove(key)) {
+                return false;
             }
         }
-        if (!keys.isEmpty()) {
-            return false;
-        }
-        return other.name.equals(name)
-                && (other.getHierarchicalContext() == getHierarchicalContext());
+        return keys.isEmpty() && other.name.equals(name) && (other.getHierarchicalContext() == getHierarchicalContext());
     }
 
     /**
@@ -213,8 +184,8 @@ public class ExplicitGroup extends AbstractGroup {
         String s;
         // write entries in well-defined order for CVS compatibility
         Set<String> sortedKeys = new TreeSet<>();
-        for (BibEntry m_entry : entries) {
-            s = m_entry.getCiteKey();
+        for (BibEntry mEntry : entries) {
+            s = mEntry.getCiteKey();
             if ((s != null) && !s.isEmpty()) {
                 sortedKeys.add(s);
             }

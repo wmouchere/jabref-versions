@@ -1,4 +1,4 @@
-/*  Copyright (C) 2003-2015 JabRef contributors.
+/*  Copyright (C) 2003-2016 JabRef contributors.
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
@@ -49,26 +49,17 @@ public class MSBibDatabase {
         entries = new HashSet<>();
     }
 
-    public MSBibDatabase(InputStream stream) {
-        importEntries(stream);
-    }
-
-    public MSBibDatabase(BibDatabase bibtex) {
-        Set<String> keySet = bibtex.getKeySet();
-        addEntries(bibtex, keySet);
-    }
-
-    public MSBibDatabase(BibDatabase bibtex, Set<String> keySet) {
-        if (keySet == null) {
-            keySet = bibtex.getKeySet();
+    public MSBibDatabase(BibDatabase database, List<BibEntry> entries) {
+        if (entries == null) {
+            addEntries(database.getEntries());
+        } else {
+            addEntries(entries);
         }
-        addEntries(bibtex, keySet);
     }
 
     public List<BibEntry> importEntries(InputStream stream) {
         entries = new HashSet<>();
-        ArrayList<BibEntry> bibitems = new ArrayList<>();
-        Document inputDocument = null;
+        Document inputDocument;
         try {
             DocumentBuilder documentBuilder = DocumentBuilderFactory.
                     newInstance().
@@ -76,7 +67,7 @@ public class MSBibDatabase {
             inputDocument = documentBuilder.parse(stream);
         } catch (ParserConfigurationException | SAXException | IOException e) {
             LOGGER.warn("Could not parse document", e);
-            return null;
+            return Collections.emptyList();
         }
         String bcol = "b:";
         NodeList rootList = inputDocument.getElementsByTagName("b:Sources");
@@ -84,6 +75,7 @@ public class MSBibDatabase {
             rootList = inputDocument.getElementsByTagName("Sources");
             bcol = "";
         }
+        List<BibEntry> bibitems = new ArrayList<>();
         if (rootList.getLength() == 0) {
             return bibitems;
         }
@@ -98,10 +90,9 @@ public class MSBibDatabase {
         return bibitems;
     }
 
-    private void addEntries(BibDatabase database, Set<String> keySet) {
+    private void addEntries(List<BibEntry> entriesToAdd) {
         entries = new HashSet<>();
-        for (String key : keySet) {
-            BibEntry entry = database.getEntryById(key);
+        for (BibEntry entry : entriesToAdd) {
             MSBibEntry newMods = new MSBibEntry(entry);
             entries.add(newMods);
         }

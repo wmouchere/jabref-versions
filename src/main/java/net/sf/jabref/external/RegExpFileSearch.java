@@ -1,4 +1,4 @@
-/*  Copyright (C) 2003-2011 JabRef contributors.
+/*  Copyright (C) 2003-2016 JabRef contributors.
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
@@ -24,6 +24,10 @@ import java.io.IOException;
 import java.io.FilenameFilter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.util.*;
 
 /**
@@ -35,7 +39,11 @@ import java.util.*;
  */
 public class RegExpFileSearch {
 
+    private static final Log LOGGER = LogFactory.getLog(RegExpFileSearch.class);
+
     private static final String EXT_MARKER = "__EXTENSION__";
+
+    private static final Pattern ESCAPE_PATTERN = Pattern.compile("([^\\\\])\\\\([^\\\\])");
 
     /**
      * Search for file links for a set of entries using regexp. Lists of extensions and directories
@@ -46,10 +54,10 @@ public class RegExpFileSearch {
      * @param regExp The expression deciding which names are acceptable.
      * @return A map linking each given entry to a list of files matching the given criteria.
      */
-    public static Map<BibEntry, java.util.List<File>> findFilesForSet(Collection<BibEntry> entries,
+    public static Map<BibEntry, List<File>> findFilesForSet(Collection<BibEntry> entries,
             Collection<String> extensions, List<File> directories, String regExp) {
 
-        Map<BibEntry, java.util.List<File>> res = new HashMap<>();
+        Map<BibEntry, List<File>> res = new HashMap<>();
         for (BibEntry entry : entries) {
             res.put(entry, RegExpFileSearch.findFiles(entry, extensions, directories, regExp));
         }
@@ -68,21 +76,14 @@ public class RegExpFileSearch {
     private static List<File> findFiles(BibEntry entry, Collection<String> extensions,
             Collection<File> directories, String regularExpression) {
 
-        StringBuilder sb = new StringBuilder();
-        for (Iterator<String> i = extensions.iterator(); i.hasNext();) {
-            sb.append(i.next());
-            if (i.hasNext()) {
-                sb.append('|');
-            }
-        }
-        String extensionRegExp = '(' + sb.toString() + ')';
+        String extensionRegExp = '(' + String.join("|", extensions) + ')';
 
         return RegExpFileSearch.findFile(entry, directories, regularExpression, extensionRegExp);
     }
 
     /**
      * Searches the given directory and filename pattern for a file for the
-     * bibtexentry.
+     * BibTeX entry.
      *
      * Used to fix:
      *
@@ -97,8 +98,8 @@ public class RegExpFileSearch {
      * Syntax scheme for file:
      * <ul>
      * <li>* Any subDir</li>
-     * <li>** Any subDir (recursiv)</li>
-     * <li>[key] Key from bibtex file and database</li>
+     * <li>** Any subDir (recursive)</li>
+     * <li>[key] Key from BibTeX file and database</li>
      * <li>.* Anything else is taken to be a Regular expression.</li>
      * </ul>
      *
@@ -120,12 +121,9 @@ public class RegExpFileSearch {
      */
     private static List<File> findFile(BibEntry entry, Collection<File> dirs, String file,
             String extensionRegExp) {
-        ArrayList<File> res = new ArrayList<>();
+        List<File> res = new ArrayList<>();
         for (File directory : dirs) {
-            List<File> tmp = RegExpFileSearch.findFile(entry, directory.getPath(), file, extensionRegExp);
-            if (tmp != null) {
-                res.addAll(tmp);
-            }
+            res.addAll(RegExpFileSearch.findFile(entry, directory.getPath(), file, extensionRegExp));
         }
         return res;
     }
@@ -144,7 +142,7 @@ public class RegExpFileSearch {
             root = new File(directory);
         }
         if (!root.exists()) {
-            return null;
+            return Collections.emptyList();
         }
         List<File> res = RegExpFileSearch.findFile(entry, root, file, extensionRegExp);
 
@@ -165,7 +163,7 @@ public class RegExpFileSearch {
                     res.set(i, new File(tmp));
 
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOGGER.warn("Problem searching", e);
                 }
             }
         }
@@ -178,15 +176,18 @@ public class RegExpFileSearch {
      */
     private static List<File> findFile(BibEntry entry, File directory, String file, String extensionRegExp) {
 
-        ArrayList<File> res = new ArrayList<>();
+        List<File> res = new ArrayList<>();
 
+        File actualDirectory;
         if (file.startsWith("/")) {
-            directory = new File(".");
+            actualDirectory = new File(".");
             file = file.substring(1);
+        } else {
+            actualDirectory = directory;
         }
 
         // Escape handling...
-        Matcher m = Pattern.compile("([^\\\\])\\\\([^\\\\])").matcher(file);
+        Matcher m = ESCAPE_PATTERN.matcher(file);
         StringBuffer s = new StringBuffer();
         while (m.find()) {
             m.appendReplacement(s, m.group(1) + '/' + m.group(2));
@@ -207,19 +208,19 @@ public class RegExpFileSearch {
                 dirToProcess = Util.expandBrackets(dirToProcess, entry, null);
 
                 if (dirToProcess.matches("^.:$")) { // Windows Drive Letter
-                    directory = new File(dirToProcess + '/');
+                    actualDirectory = new File(dirToProcess + '/');
                     continue;
                 }
                 if (".".equals(dirToProcess)) { // Stay in current directory
                     continue;
                 }
                 if ("..".equals(dirToProcess)) {
-                    directory = new File(directory.getParent());
+                    actualDirectory = new File(actualDirectory.getParent());
                     continue;
                 }
                 if ("*".equals(dirToProcess)) { // Do for all direct subdirs
 
-                    File[] subDirs = directory.listFiles();
+                    File[] subDirs = actualDirectory.listFiles();
                     if (subDirs != null) {
                         String restOfFileString = StringUtil.join(fileParts, "/", i + 1, fileParts.length);
                         for (File subDir : subDirs) {
@@ -232,7 +233,7 @@ public class RegExpFileSearch {
                 // Do for all direct and indirect subdirs
                 if ("**".equals(dirToProcess)) {
                     List<File> toDo = new LinkedList<>();
-                    toDo.add(directory);
+                    toDo.add(actualDirectory);
 
                     String restOfFileString = StringUtil.join(fileParts, "/", i + 1, fileParts.length);
 
@@ -260,13 +261,13 @@ public class RegExpFileSearch {
         }
 
         // Last step: check if the given file can be found in this directory
-        String filePart = fileParts[fileParts.length - 1].replaceAll("\\[extension\\]", RegExpFileSearch.EXT_MARKER);
+        String filePart = fileParts[fileParts.length - 1].replace("[extension]", RegExpFileSearch.EXT_MARKER);
         String filenameToLookFor = Util.expandBrackets(filePart, entry, null)
                 .replaceAll(RegExpFileSearch.EXT_MARKER, extensionRegExp);
         final Pattern toMatch = Pattern.compile('^'
                 + filenameToLookFor.replaceAll("\\\\\\\\", "\\\\") + '$', Pattern.CASE_INSENSITIVE);
 
-        File[] matches = directory.listFiles(new FilenameFilter() {
+        File[] matches = actualDirectory.listFiles(new FilenameFilter() {
 
             @Override
             public boolean accept(File arg0, String arg1) {

@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -29,12 +30,13 @@ import net.sf.jabref.model.entry.AuthorList;
 
 import java.util.regex.Pattern;
 
-import net.sf.jabref.bibtex.EntryTypes;
-
 /**
  * INSPEC format importer.
  */
 public class InspecImporter extends ImportFormat {
+
+    private static final Pattern INSPEC_PATTERN = Pattern.compile("Record.*INSPEC.*");
+
 
     /**
      * Return the name of this import format.
@@ -59,23 +61,15 @@ public class InspecImporter extends ImportFormat {
     @Override
     public boolean isRecognizedFormat(InputStream stream) throws IOException {
         // Our strategy is to look for the "PY <year>" line.
-        BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream));
-        //Pattern pat1 = Pattern.compile("PY:  \\d{4}");
-        Pattern pat1 = Pattern.compile("Record.*INSPEC.*");
+        try (BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
+            String str;
 
-        //was PY \\\\d{4}? before
-        String str;
-
-        while ((str = in.readLine()) != null) {
-            //Inspec and IEEE seem to have these strange " - " between key and value
-            //str = str.replace(" - ", "");
-            //System.out.println(str);
-
-            if (pat1.matcher(str).find()) {
-                return true;
+            while ((str = in.readLine()) != null) {
+                if (INSPEC_PATTERN.matcher(str).find()) {
+                    return true;
+                }
             }
         }
-
         return false;
     }
 
@@ -84,7 +78,7 @@ public class InspecImporter extends ImportFormat {
      */
     @Override
     public List<BibEntry> importEntries(InputStream stream, OutputPrinter status) throws IOException {
-        ArrayList<BibEntry> bibitems = new ArrayList<>();
+        List<BibEntry> bibitems = new ArrayList<>();
         StringBuilder sb = new StringBuilder();
         String str;
         try (BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream))) {
@@ -101,7 +95,7 @@ public class InspecImporter extends ImportFormat {
         }
         String[] entries = sb.toString().split("__::__");
         String type = "";
-        HashMap<String, String> h = new HashMap<>();
+        Map<String, String> h = new HashMap<>();
         for (String entry : entries) {
             if (entry.indexOf("Record") != 0) {
                 continue;
@@ -110,7 +104,6 @@ public class InspecImporter extends ImportFormat {
 
             String[] fields = entry.split("__NEWFIELD__");
             for (String s : fields) {
-                //System.out.println(fields[j]);
                 String f3 = s.substring(0, 2);
                 String frest = s.substring(5);
                 if ("TI".equals(f3)) {
@@ -119,7 +112,7 @@ public class InspecImporter extends ImportFormat {
                     h.put("year", frest);
                 } else if ("AU".equals(f3)) {
                     h.put("author",
-                            AuthorList.fixAuthor_lastNameFirst(frest.replaceAll(",-", ", ").replaceAll(";", " and ")));
+                            AuthorList.fixAuthorLastNameFirst(frest.replace(",-", ", ").replace(";", " and ")));
                 } else if ("AB".equals(f3)) {
                     h.put("abstract", frest);
                 } else if ("ID".equals(f3)) {
@@ -128,18 +121,19 @@ public class InspecImporter extends ImportFormat {
                     int m = frest.indexOf('.');
                     if (m >= 0) {
                         String jr = frest.substring(0, m);
-                        h.put("journal", jr.replaceAll("-", " "));
+                        h.put("journal", jr.replace("-", " "));
                         frest = frest.substring(m);
                         m = frest.indexOf(';');
                         if (m >= 5) {
-                            String yr = frest.substring(m - 5, m);
+                            String yr = frest.substring(m - 5, m).trim();
                             h.put("year", yr);
                             frest = frest.substring(m);
                             m = frest.indexOf(':');
                             if (m >= 0) {
                                 String pg = frest.substring(m + 1).trim();
                                 h.put("pages", pg);
-                                h.put("volume", frest.substring(1, m));
+                                String vol = frest.substring(1, m).trim();
+                                h.put("volume", vol);
                             }
                         }
                     }
@@ -151,11 +145,11 @@ public class InspecImporter extends ImportFormat {
                     } else if ("Conference-Paper".equals(frest) || "Conference-Paper; Journal-Paper".equals(frest)) {
                         type = "inproceedings";
                     } else {
-                        type = frest.replaceAll(" ", "");
+                        type = frest.replace(" ", "");
                     }
                 }
             }
-            BibEntry b = new BibEntry(DEFAULT_BIBTEXENTRY_ID, EntryTypes.getTypeOrDefault(type)); // id assumes an existing database so don't
+            BibEntry b = new BibEntry(DEFAULT_BIBTEXENTRY_ID, type); // id assumes an existing database so don't
             // create one here
             b.setField(h);
 

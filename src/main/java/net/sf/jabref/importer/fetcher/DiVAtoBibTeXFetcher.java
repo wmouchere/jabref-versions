@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
+import net.sf.jabref.logic.formatter.casechanger.ProtectTermsFormatter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -33,20 +34,18 @@ import net.sf.jabref.importer.fileformat.BibtexParser;
 import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.Globals;
 import net.sf.jabref.JabRefPreferences;
-import net.sf.jabref.logic.formatter.bibtexfields.UnitFormatter;
-import net.sf.jabref.logic.formatter.casechanger.CaseKeeper;
+import net.sf.jabref.logic.formatter.bibtexfields.UnicodeToLatexFormatter;
+import net.sf.jabref.logic.formatter.bibtexfields.UnitsToLatexFormatter;
 import net.sf.jabref.logic.l10n.Localization;
-import net.sf.jabref.util.Util;
+import net.sf.jabref.logic.net.URLDownload;
 
 public class DiVAtoBibTeXFetcher implements EntryFetcher {
 
     private static final Log LOGGER = LogFactory.getLog(DiVAtoBibTeXFetcher.class);
 
     private static final String URL_PATTERN = "http://www.diva-portal.org/smash/getreferences?referenceFormat=BibTex&pids=%s";
-    private final CaseKeeper caseKeeper = new CaseKeeper();
-    private final UnitFormatter unitFormatter = new UnitFormatter();
-    private final HTMLConverter htmlConverter = new HTMLConverter();
-
+    private final ProtectTermsFormatter protectTermsFormatter = new ProtectTermsFormatter();
+    private final UnitsToLatexFormatter unitsToLatexFormatter = new UnitsToLatexFormatter();
 
     @Override
     public void stopFetching() {
@@ -78,7 +77,9 @@ public class DiVAtoBibTeXFetcher implements EntryFetcher {
 
         String bibtexString;
         try {
-            bibtexString = Util.getResultsWithEncoding(url, StandardCharsets.UTF_8);
+            URLDownload dl = new URLDownload(url);
+
+            bibtexString = dl.downloadToString(StandardCharsets.UTF_8);
         } catch (FileNotFoundException e) {
             status.showMessage(Localization.lang("Unknown DiVA entry: '%0'.",
                             query),
@@ -92,27 +93,23 @@ public class DiVAtoBibTeXFetcher implements EntryFetcher {
         BibEntry entry = BibtexParser.singleFromString(bibtexString);
         if (entry != null) {
             // Optionally add curly brackets around key words to keep the case
-            String title = entry.getField("title");
-            if (title != null) {
+            entry.getFieldOptional("title").ifPresent(title -> {
                 // Unit formatting
                 if (Globals.prefs.getBoolean(JabRefPreferences.USE_UNIT_FORMATTER_ON_SEARCH)) {
-                    title = unitFormatter.format(title);
+                    title = unitsToLatexFormatter.format(title);
                 }
 
                 // Case keeping
                 if (Globals.prefs.getBoolean(JabRefPreferences.USE_CASE_KEEPER_ON_SEARCH)) {
-                    title = caseKeeper.format(title);
+                    title = protectTermsFormatter.format(title);
                 }
                 entry.setField("title", title);
-            }
+            });
 
-            String institution = entry.getField("institution");
-            if (institution != null) {
-                institution = htmlConverter.formatUnicode(institution);
-                entry.setField("institution", institution);
-            }
+            entry.getFieldOptional("institution").ifPresent(
+                    institution -> entry.setField("institution", new UnicodeToLatexFormatter().format(institution)));
             // Do not use the provided key
-            // entry.clearField(BibtexFields.KEY_FIELD);
+            // entry.clearField(InternalBibtexFields.KEY_FIELD);
             inspector.addEntry(entry);
 
             return true;
@@ -127,7 +124,7 @@ public class DiVAtoBibTeXFetcher implements EntryFetcher {
 
     @Override
     public String getHelpPage() {
-        return "DiVAtoBibTeXHelp.html";
+        return "DiVAtoBibTeXHelp";
     }
 
     @Override

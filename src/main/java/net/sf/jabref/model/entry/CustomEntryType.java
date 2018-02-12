@@ -15,20 +15,14 @@
 */
 package net.sf.jabref.model.entry;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * This class is used to represent customized entry types.
  */
 public class CustomEntryType implements EntryType {
-    private static final Log LOGGER = LogFactory.getLog(CustomEntryType.class);
 
     public static final String ENTRYTYPE_FLAG = "jabref-entrytype: ";
     private final String name;
@@ -62,7 +56,7 @@ public class CustomEntryType implements EntryType {
     @Override
     public boolean equals(Object o) {
         if (o instanceof CustomEntryType) {
-            return (this.compareTo(((CustomEntryType) o)) == 0);
+            return this.compareTo((CustomEntryType) o) == 0;
         } else {
             return false;
         }
@@ -90,7 +84,9 @@ public class CustomEntryType implements EntryType {
 
     @Override
     public List<String> getSecondaryOptionalFields() {
-        return Collections.unmodifiableList(EntryUtil.getRemainder(optional, primaryOptional));
+        List<String> result = new ArrayList<>(optional);
+        result.removeAll(primaryOptional);
+        return Collections.unmodifiableList(result);
     }
 
     /**
@@ -99,16 +95,7 @@ public class CustomEntryType implements EntryType {
      * @return Description of required field set for storage in preferences or bib file.
      */
     public String getRequiredFieldsString() {
-        StringBuilder serialization = new StringBuilder();
-
-        for (int i = 0; i < required.size(); i++) {
-            serialization.append(required.get(i));
-
-            if (i < (required.size() - 1)) {
-                serialization.append(';');
-            }
-        }
-        return serialization.toString();
+        return String.join(";", required);
     }
 
     @Override

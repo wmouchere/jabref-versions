@@ -1,9 +1,7 @@
 package net.sf.jabref.gui.actions;
 
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.List;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -34,32 +32,29 @@ public class AutoLinkFilesAction extends AbstractAction {
 
     @Override
     public void actionPerformed(ActionEvent event) {
-        ArrayList<BibEntry> entries = new ArrayList<>();
-        Collections.addAll(entries, JabRef.jrf.getCurrentBasePanel().getSelectedEntries());
+        List<BibEntry> entries = JabRef.mainFrame.getCurrentBasePanel().getSelectedEntries();
         if (entries.isEmpty()) {
-            JabRef.jrf.getCurrentBasePanel().output(Localization.lang("No entries selected."));
+            JabRef.mainFrame.getCurrentBasePanel()
+                    .output(Localization.lang("This operation requires one or more entries to be selected."));
             return;
         }
-        JDialog diag = new JDialog(JabRef.jrf, true);
+        JDialog diag = new JDialog(JabRef.mainFrame, true);
         final NamedCompound nc = new NamedCompound(Localization.lang("Automatically set file links"));
-        Runnable runnable = Util.autoSetLinks(entries, nc, null, null, JabRef.jrf.getCurrentBasePanel().metaData(), new ActionListener() {
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (e.getID() > 0) {
-                    // entry has been updated in Util.autoSetLinks, only treat nc and status message
-                    if (nc.hasEdits()) {
-                        nc.end();
-                        JabRef.jrf.getCurrentBasePanel().undoManager.addEdit(nc);
-                        JabRef.jrf.getCurrentBasePanel().markBaseChanged();
+        Runnable runnable = Util.autoSetLinks(entries, nc, null, null,
+                JabRef.mainFrame.getCurrentBasePanel().getBibDatabaseContext(), e -> {
+                    if (e.getID() > 0) {
+                        // entry has been updated in Util.autoSetLinks, only treat nc and status message
+                        if (nc.hasEdits()) {
+                            nc.end();
+                            JabRef.mainFrame.getCurrentBasePanel().undoManager.addEdit(nc);
+                            JabRef.mainFrame.getCurrentBasePanel().markBaseChanged();
+                        }
+                        JabRef.mainFrame.output(Localization.lang("Finished automatically setting external links."));
+                    } else {
+                        JabRef.mainFrame.output(Localization.lang("Finished automatically setting external links.") + " "
+                                + Localization.lang("No files found."));
                     }
-                    JabRef.jrf.output(Localization.lang("Finished autosetting external links."));
-                } else {
-                    JabRef.jrf.output(Localization.lang("Finished autosetting external links.")
-                            + " " + Localization.lang("No files found."));
-                }
-            }
-        }, diag);
+                } , diag);
         JabRefExecutorService.INSTANCE.execute(runnable);
     }
 }

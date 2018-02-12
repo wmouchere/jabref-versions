@@ -15,77 +15,6 @@
 */
 package net.sf.jabref.gui;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Rectangle;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.io.IOException;
-import java.util.*;
-
-import javax.swing.AbstractAction;
-import javax.swing.ActionMap;
-import javax.swing.BorderFactory;
-import javax.swing.InputMap;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComponent;
-import javax.swing.JDialog;
-import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
-import javax.swing.JProgressBar;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTable;
-import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableColumnModel;
-import javax.swing.table.TableModel;
-import javax.swing.undo.AbstractUndoableEdit;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import net.sf.jabref.gui.keyboard.KeyBinding;
-import net.sf.jabref.gui.renderer.GeneralRenderer;
-import net.sf.jabref.model.entry.AuthorList;
-import net.sf.jabref.model.database.BibDatabase;
-import net.sf.jabref.model.entry.BibEntry;
-import net.sf.jabref.bibtex.DuplicateCheck;
-import net.sf.jabref.bibtex.comparator.FieldComparator;
-import net.sf.jabref.Globals;
-import net.sf.jabref.model.entry.EntryUtil;
-import net.sf.jabref.model.entry.IdGenerator;
-import net.sf.jabref.JabRefExecutorService;
-import net.sf.jabref.JabRefPreferences;
-import net.sf.jabref.MetaData;
-import net.sf.jabref.importer.OutputPrinter;
-import net.sf.jabref.external.DownloadExternalFile;
-import net.sf.jabref.external.ExternalFileMenuItem;
-import net.sf.jabref.groups.structure.AbstractGroup;
-import net.sf.jabref.groups.structure.AllEntriesGroup;
-import net.sf.jabref.groups.GroupTreeNode;
-import net.sf.jabref.groups.UndoableChangeAssignment;
-import net.sf.jabref.gui.help.HelpAction;
-import net.sf.jabref.importer.ImportInspector;
-import net.sf.jabref.logic.l10n.Localization;
-import net.sf.jabref.logic.labelPattern.LabelPatternUtil;
-import net.sf.jabref.gui.undo.NamedCompound;
-import net.sf.jabref.gui.undo.UndoableInsertEntry;
-import net.sf.jabref.gui.undo.UndoableRemoveEntry;
-import net.sf.jabref.gui.util.IconComparator;
-import net.sf.jabref.gui.util.PositionWindow;
-import net.sf.jabref.gui.desktop.JabRefDesktop;
 import ca.odell.glazedlists.BasicEventList;
 import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.SortedList;
@@ -97,9 +26,54 @@ import ca.odell.glazedlists.swing.DefaultEventSelectionModel;
 import ca.odell.glazedlists.swing.DefaultEventTableModel;
 import ca.odell.glazedlists.swing.GlazedListsSwing;
 import ca.odell.glazedlists.swing.TableComparatorChooser;
-
 import com.jgoodies.forms.builder.ButtonBarBuilder;
 import com.jgoodies.forms.builder.ButtonStackBuilder;
+import net.sf.jabref.*;
+import net.sf.jabref.bibtex.FieldProperties;
+import net.sf.jabref.bibtex.InternalBibtexFields;
+import net.sf.jabref.bibtex.comparator.FieldComparator;
+import net.sf.jabref.external.DownloadExternalFile;
+import net.sf.jabref.external.ExternalFileMenuItem;
+import net.sf.jabref.groups.GroupTreeNode;
+import net.sf.jabref.groups.UndoableChangeAssignment;
+import net.sf.jabref.groups.structure.AbstractGroup;
+import net.sf.jabref.groups.structure.AllEntriesGroup;
+import net.sf.jabref.gui.DuplicateResolverDialog.DuplicateResolverResult;
+import net.sf.jabref.gui.desktop.JabRefDesktop;
+import net.sf.jabref.gui.help.HelpAction;
+import net.sf.jabref.gui.help.HelpFiles;
+import net.sf.jabref.gui.keyboard.KeyBinding;
+import net.sf.jabref.gui.renderer.GeneralRenderer;
+import net.sf.jabref.gui.undo.NamedCompound;
+import net.sf.jabref.gui.undo.UndoableInsertEntry;
+import net.sf.jabref.gui.undo.UndoableRemoveEntry;
+import net.sf.jabref.gui.util.comparator.IconComparator;
+import net.sf.jabref.gui.util.component.CheckBoxMessage;
+import net.sf.jabref.importer.ImportInspector;
+import net.sf.jabref.importer.OutputPrinter;
+import net.sf.jabref.logic.l10n.Localization;
+import net.sf.jabref.logic.labelpattern.LabelPatternUtil;
+import net.sf.jabref.logic.util.UpdateField;
+import net.sf.jabref.model.DuplicateCheck;
+import net.sf.jabref.model.database.BibDatabase;
+import net.sf.jabref.model.database.BibDatabaseMode;
+import net.sf.jabref.model.entry.AuthorList;
+import net.sf.jabref.model.entry.BibEntry;
+import net.sf.jabref.model.entry.EntryUtil;
+import net.sf.jabref.model.entry.IdGenerator;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import javax.swing.*;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableModel;
+import javax.swing.undo.AbstractUndoableEdit;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.IOException;
+import java.util.*;
+import java.util.List;
 
 /**
  * Dialog to allow the selection of entries as part of an Import.
@@ -121,22 +95,15 @@ import com.jgoodies.forms.builder.ButtonStackBuilder;
  * soon as possible (it is not really critical, but good style to not contribute
  * any more results via addEntry, call entryListComplete() or dispose(), after
  * receiving this call).
- *
- * @author alver
  */
 public class ImportInspectionDialog extends JDialog implements ImportInspector, OutputPrinter {
-
     private static final Log LOGGER = LogFactory.getLog(ImportInspectionDialog.class);
-
-
-
-    protected ImportInspectionDialog ths = this;
 
     private BasePanel panel;
 
-    private final JabRefFrame frame;
+    public final JabRefFrame frame;
 
-    private final MetaData metaData;
+    private final BibDatabaseContext bibDatabaseContext;
 
     private final JSplitPane contentPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
 
@@ -145,8 +112,6 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
     private final TableComparatorChooser<BibEntry> comparatorChooser;
 
     private final DefaultEventSelectionModel<BibEntry> selectionModel;
-
-    private final String[] fields;
 
     private final JProgressBar progressBar = new JProgressBar(SwingConstants.HORIZONTAL);
 
@@ -176,10 +141,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
 
     private final PreviewPanel preview;
 
-    private boolean generatedKeys; // Set to true after keys have
-    // been
-
-    // generated.
+    private boolean generatedKeys; // Set to true after keys have been generated.
 
     private boolean defaultSelected = true;
 
@@ -187,12 +149,14 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
 
     private final Map<BibEntry, Set<GroupTreeNode>> groupAdditions = new HashMap<>();
 
-    private final JCheckBox autoGenerate = new JCheckBox(Localization.lang("Generate keys"), Globals.prefs
-            .getBoolean(JabRefPreferences.GENERATE_KEYS_AFTER_INSPECTION));
+    private final JCheckBox autoGenerate = new JCheckBox(Localization.lang("Generate keys"),
+            Globals.prefs.getBoolean(JabRefPreferences.GENERATE_KEYS_AFTER_INSPECTION));
 
     private final JLabel duplLabel = new JLabel(IconTheme.JabRefIcon.DUPLICATE.getSmallIcon());
     private final JLabel fileLabel = new JLabel(IconTheme.JabRefIcon.FILE.getSmallIcon());
     private final JLabel urlLabel = new JLabel(IconTheme.JabRefIcon.WWW.getSmallIcon());
+
+    private static final List<String> INSPECTION_FIELDS = Arrays.asList("author", "title", "year", BibEntry.KEY_FIELD);
 
     private static final int DUPL_COL = 1;
     private static final int FILE_COL = 2;
@@ -201,27 +165,6 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
 
     private static final String URL_FIELD = "url";
 
-
-    public interface CallBack {
-
-        /**
-         * This method is called by the dialog when the user has cancelled or
-         * signalled a stop. It is expected that any long-running fetch
-         * operations will stop after this method is called.
-         */
-        void stopFetching();
-    }
-
-
-    /**
-     * The "defaultSelected" boolean value determines if new entries added are
-     * selected for import or not. This value is true by default.
-     *
-     * @param defaultSelected The desired value.
-     */
-    public void setDefaultSelected(boolean defaultSelected) {
-        this.defaultSelected = defaultSelected;
-    }
 
     /**
      * Creates a dialog that displays the given list of fields in the table. The
@@ -232,15 +175,14 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
      * @param panel
      * @param fields
      */
-    public ImportInspectionDialog(JabRefFrame frame, BasePanel panel, String[] fields,
-                                  String undoName, boolean newDatabase) {
+    public ImportInspectionDialog(JabRefFrame frame, BasePanel panel, String undoName, boolean newDatabase) {
         this.frame = frame;
         this.panel = panel;
-        this.metaData = (panel == null) ? new MetaData() : panel.metaData();
-        this.fields = Arrays.copyOf(fields, fields.length);
+        this.bibDatabaseContext = (panel == null) ? null : panel.getBibDatabaseContext();
         this.undoName = undoName;
         this.newDatabase = newDatabase;
-        preview = new PreviewPanel(null, metaData, Globals.prefs.get(JabRefPreferences.PREVIEW_0));
+        setIconImage(new ImageIcon(IconTheme.getIconUrl("jabrefIcon48")).getImage());
+        preview = new PreviewPanel(null, bibDatabaseContext, Globals.prefs.get(JabRefPreferences.PREVIEW_0));
 
         duplLabel.setToolTipText(Localization.lang("Possible duplicate of existing entry. Click to resolve."));
 
@@ -279,11 +221,10 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
 
         popup.add(deleteListener);
         popup.addSeparator();
-        if (!newDatabase) {
-            GroupTreeNode node = metaData.getGroups();
+        if (!newDatabase && (bibDatabaseContext != null)) {
+            GroupTreeNode node = bibDatabaseContext.getMetaData().getGroups();
             JMenu groupsAdd = new JMenu(Localization.lang("Add to group"));
-            groupsAdd.setEnabled(false); // Will get enabled if there are
-            // groups that can be added to.
+            groupsAdd.setEnabled(false); // Will get enabled if there are groups that can be added to.
             insertNodes(groupsAdd, node);
             popup.add(groupsAdd);
         }
@@ -292,8 +233,6 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         popup.add(new LinkLocalFile());
         popup.add(new DownloadFile());
         popup.add(new AutoSetLinks());
-        // popup.add(new AttachFile("pdf"));
-        // popup.add(new AttachFile("ps"));
         popup.add(new AttachUrl());
         getContentPane().add(centerPan, BorderLayout.CENTER);
 
@@ -305,7 +244,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                 Localization.lang("Cancel"));
         bb.addButton(cancel);
         bb.addRelatedGap();
-        JButton help = new HelpAction(frame.helpDiag, GUIGlobals.importInspectionHelp).getIconButton();
+        JButton help = new HelpAction(HelpFiles.importInspectionHelp).getHelpButton();
         bb.addButton(help);
         bb.addGlue();
         bb.getPanel().setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
@@ -328,12 +267,31 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         ok.setEnabled(false);
         generate.setEnabled(false);
         ok.addActionListener(new OkListener());
-        cancel.addActionListener(new CancelListener());
-        generate.addActionListener(new GenerateListener());
-        stop.addActionListener(new StopListener());
+        cancel.addActionListener(e -> {
+            signalStopFetching();
+            dispose();
+            frame.output(Localization.lang("Import canceled by user"));
+        });
+        generate.addActionListener(e -> {
+            generate.setEnabled(false);
+            generatedKeys = true; // To prevent the button from getting
+            // enabled again.
+            generateKeys(); // Generate the keys.
+        });
+        stop.addActionListener(e -> {
+            signalStopFetching();
+            entryListComplete();
+        });
         selectAll.addActionListener(new SelectionButton(true));
         deselectAll.addActionListener(new SelectionButton(false));
-        deselectAllDuplicates.addActionListener(new DeselectDuplicatesButtonListener());
+        deselectAllDuplicates.addActionListener(e -> {
+            for (int i = 0; i < glTable.getRowCount(); i++) {
+                if (glTable.getValueAt(i, DUPL_COL) != null) {
+                    glTable.setValueAt(false, i, 0);
+                }
+            }
+            glTable.repaint();
+        });
         deselectAllDuplicates.setEnabled(false);
         delete.addActionListener(deleteListener);
         getContentPane().add(bb.getPanel(), BorderLayout.SOUTH);
@@ -355,7 +313,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             }
         });
         // Key bindings:
-        AbstractAction closeAction = new AbstractAction() {
+        Action closeAction = new AbstractAction() {
 
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -404,8 +362,9 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             // Checking duplicates means both checking against the background
             // database (if
             // applicable) and against entries already in the table.
-            if (((panel != null) && (DuplicateCheck.containsDuplicate(panel.database(), entry).isPresent()))
-                    || (internalDuplicate(this.entries, entry).isPresent())) {
+            if ((panel != null) && (DuplicateCheck
+                    .containsDuplicate(panel.getDatabase(), entry, panel.getBibDatabaseContext().getMode()).isPresent()
+                    || (internalDuplicate(this.entries, entry).isPresent()))) {
                 entry.setGroupHit(true);
                 deselectAllDuplicates.setEnabled(true);
             }
@@ -420,40 +379,21 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
      * not report the entry as duplicate of itself if it is in the Collection.
      *
      * @param entriesDupe A Collection of BibEntry instances.
-     * @param entry   The entry to search for duplicates of.
+     * @param entry       The entry to search for duplicates of.
      * @return A possible duplicate, if any, or null if none were found.
      */
-    private static Optional<BibEntry> internalDuplicate(Collection<BibEntry> entriesDupe, BibEntry entry) {
+    private Optional<BibEntry> internalDuplicate(Collection<BibEntry> entriesDupe, BibEntry entry) {
         for (BibEntry othEntry : entriesDupe) {
             if (othEntry.equals(entry)) {
                 continue; // Don't compare the entry to itself
             }
-            if (DuplicateCheck.isDuplicate(entry, othEntry)) {
+            if (DuplicateCheck.isDuplicate(entry, othEntry, panel.getBibDatabaseContext().getMode())) {
                 return Optional.of(othEntry);
             }
         }
         return Optional.empty();
     }
 
-    /**
-     * Removes all selected entries from the table. Synchronizes on this.entries
-     * to prevent conflict with addition of new entries.
-     */
-    private void removeSelectedEntries() {
-        int row = glTable.getSelectedRow();
-        List<Object> toRemove = new ArrayList<>();
-        toRemove.addAll(selectionModel.getSelected());
-        entries.getReadWriteLock().writeLock().lock();
-        for (Object o : toRemove) {
-            entries.remove(o);
-        }
-        entries.getReadWriteLock().writeLock().unlock();
-        glTable.clearSelection();
-        if ((row >= 0) && (!entries.isEmpty())) {
-            row = Math.min(entries.size() - 1, row);
-            glTable.addRowSelectionInterval(row, row);
-        }
-    }
 
     /* (non-Javadoc)
      * @see net.sf.jabref.gui.ImportInspection#entryListComplete()
@@ -470,30 +410,10 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         //This is for selecting and displaying the first entry in the glTable
         this.glTable.repaint();
         if ((this.glTable.getSelectedRowCount() == 0) && (this.glTable.getRowCount() > 0)) {
-                this.glTable.setRowSelectionInterval(0, 0); //Select first row in the table
+            this.glTable.setRowSelectionInterval(0, 0); //Select first row in the table
         }
     }
 
-    /**
-     * This method returns a List containing all entries that are selected
-     * (checkbox checked).
-     *
-     * @return a List containing the selected entries.
-     */
-    private List<BibEntry> getSelectedEntries() {
-        List<BibEntry> selected = new ArrayList<>();
-        for (BibEntry entry : entries) {
-            if (entry.isSearchHit()) {
-                selected.add(entry);
-            }
-        }
-        /*
-         * for (int i = 0; i < table.getRowCount(); i++) { Boolean sel =
-         * (Boolean) table.getValueAt(i, 0); if (sel.booleanValue()) {
-         * selected.add(entries.get(i)); } }
-         */
-        return selected;
-    }
 
     /**
      * Generate key for the selected entry only.
@@ -513,8 +433,8 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             database = new BibDatabase();
             localMetaData = new MetaData();
         } else {
-            database = panel.database();
-            localMetaData = panel.metaData();
+            database = panel.getDatabase();
+            localMetaData = panel.getBibDatabaseContext().getMetaData();
         }
 
         entry.setId(IdGenerator.next());
@@ -548,8 +468,8 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             database = new BibDatabase();
             localMetaData = new MetaData();
         } else {
-            database = panel.database();
-            localMetaData = panel.metaData();
+            database = panel.getDatabase();
+            localMetaData = panel.getBibDatabaseContext().getMetaData();
         }
 
         List<String> keys = new ArrayList<>(entries.size());
@@ -617,7 +537,6 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         return action;
     }
 
-
     /**
      * Stores the information about the selected entries being scheduled for
      * addition to this group. The entries are *not* added to the group at this
@@ -627,7 +546,6 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
     class AddToGroupAction extends AbstractAction {
 
         private final GroupTreeNode node;
-
 
         public AddToGroupAction(GroupTreeNode node) {
             super(node.getGroup().getName());
@@ -654,11 +572,9 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         }
     }
 
-
     public void addCallBack(CallBack cb) {
         callBacks.add(cb);
     }
-
 
     private class OkListener implements ActionListener {
 
@@ -683,7 +599,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                     // is indicated by the entry's group hit status:
                     if (entry.isGroupHit()) {
                         CheckBoxMessage cbm = new CheckBoxMessage(
-                                Localization.lang("There are possible duplicates (marked with a 'D' icon) that haven't been resolved. Continue?"),
+                                Localization.lang("There are possible duplicates (marked with an icon) that haven't been resolved. Continue?"),
                                 Localization.lang("Disable this confirmation dialog"), false);
                         int answer = JOptionPane.showConfirmDialog(ImportInspectionDialog.this,
                                 cbm, Localization.lang("Duplicates found"), JOptionPane.YES_NO_OPTION);
@@ -705,8 +621,8 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             // See if we should remove any old entries for duplicate resolving:
             if (!entriesToDelete.isEmpty()) {
                 for (BibEntry entry : entriesToDelete) {
-                    ce.addEdit(new UndoableRemoveEntry(panel.database(), entry, panel));
-                    panel.database().removeEntry(entry);
+                    ce.addEdit(new UndoableRemoveEntry(panel.getDatabase(), entry, panel));
+                    panel.getDatabase().removeEntry(entry);
                 }
             }
 
@@ -724,20 +640,26 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
 
                 if (newDatabase) {
                     // Create a new BasePanel for the entries:
-                    BibDatabase base = new BibDatabase();
-                    panel = new BasePanel(frame, base, null, new MetaData(), Globals.prefs.getDefaultEncoding());
+                    Defaults defaults = new Defaults(BibDatabaseMode.fromPreference(Globals.prefs.getBoolean(JabRefPreferences.BIBLATEX_DEFAULT_MODE)));
+                    panel = new BasePanel(frame, new BibDatabaseContext(defaults), Globals.prefs.getDefaultEncoding());
                 }
 
                 boolean groupingCanceled = false;
 
                 // Set owner/timestamp if options are enabled:
-                net.sf.jabref.util.Util.setAutomaticFields(selected, Globals.prefs.getBoolean(JabRefPreferences.OVERWRITE_OWNER),
-                        Globals.prefs.getBoolean(JabRefPreferences.OVERWRITE_TIME_STAMP), Globals.prefs.getBoolean(JabRefPreferences.MARK_IMPORTED_ENTRIES));
+                UpdateField.setAutomaticFields(selected, Globals.prefs.getBoolean(JabRefPreferences.OVERWRITE_OWNER),
+                        Globals.prefs.getBoolean(JabRefPreferences.OVERWRITE_TIME_STAMP));
 
+                // Mark entries if we should
+                if (EntryMarker.shouldMarkEntries()) {
+                    for (BibEntry entry : selected) {
+                        EntryMarker.markEntry(entry, EntryMarker.IMPORT_MARK_LEVEL, false, new NamedCompound(""));
+                    }
+                }
                 // Check if we should unmark entries before adding the new ones:
                 if (Globals.prefs.getBoolean(JabRefPreferences.UNMARK_ALL_ENTRIES_BEFORE_IMPORTING)) {
-                    for (BibEntry entry : panel.database().getEntries()) {
-                        EntryMarker.unmarkEntry(entry, true, panel.database(), ce);
+                    for (BibEntry entry : panel.getDatabase().getEntries()) {
+                        EntryMarker.unmarkEntry(entry, true, panel.getDatabase(), ce);
                     }
                 }
 
@@ -774,8 +696,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                             for (GroupTreeNode node : groups) {
                                 if (node.getGroup().supportsAdd()) {
                                     // Add the entry:
-                                    AbstractUndoableEdit undo = node.getGroup().add(
-                                            new BibEntry[]{entry});
+                                    AbstractUndoableEdit undo = node.getGroup().add(Collections.singletonList(entry));
                                     if (undo instanceof UndoableChangeAssignment) {
                                         ((UndoableChangeAssignment) undo).setEditedNode(node);
                                     }
@@ -787,8 +708,8 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                     }
 
                     entry.setId(IdGenerator.next());
-                    panel.database().insertEntry(entry);
-                    ce.addEdit(new UndoableInsertEntry(panel.database(), entry, panel));
+                    panel.getDatabase().insertEntry(entry);
+                    ce.addEdit(new UndoableInsertEntry(panel.getDatabase(), entry, panel));
 
                 }
 
@@ -797,31 +718,41 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             }
 
             dispose();
-            SwingUtilities.invokeLater(new Runnable() {
+            SwingUtilities.invokeLater(() -> {
+                if (newDatabase) {
+                    frame.addTab(panel, true);
+                }
+                panel.markBaseChanged();
 
-                @Override
-                public void run() {
-                    if (newDatabase) {
-                        frame.addTab(panel, null, true);
-                    }
-                    panel.markBaseChanged();
-
-                    if (selected.isEmpty()) {
-                        frame.output(Localization.lang("No entries imported."));
-                    } else {
-                        frame.output(Localization.lang("Number of entries successfully imported") +
-                                ": " + selected.size());
-                    }
+                if (selected.isEmpty()) {
+                    frame.output(Localization.lang("No entries imported."));
+                } else {
+                    frame.output(Localization.lang("Number of entries successfully imported") + ": " + selected.size());
                 }
             });
         }
+
+        /**
+         * This method returns a List containing all entries that are selected
+         * (checkbox checked).
+         *
+         * @return a List containing the selected entries.
+         */
+        private List<BibEntry> getSelectedEntries() {
+            List<BibEntry> selected = new ArrayList<>();
+            for (BibEntry entry : entries) {
+                if (entry.isSearchHit()) {
+                    selected.add(entry);
+                }
+            }
+
+            return selected;
+        }
+
     }
 
-
     private void signalStopFetching() {
-        for (CallBack c : callBacks) {
-            c.stopFetching();
-        }
+        callBacks.forEach(c -> c.stopFetching());
     }
 
     private void setWidths() {
@@ -836,44 +767,13 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             cm.getColumn(i).setMaxWidth(GUIGlobals.WIDTH_ICON_COL);
         }
 
-        for (int i = 0; i < fields.length; i++) {
-            int width = BibtexFields.getFieldLength(fields[i]);
+        for (int i = 0; i < INSPECTION_FIELDS.size(); i++) {
+            int width = InternalBibtexFields.getFieldLength(INSPECTION_FIELDS.get(i));
             glTable.getColumnModel().getColumn(i + PAD).setPreferredWidth(width);
         }
     }
 
-
-    private class StopListener implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent event) {
-            signalStopFetching();
-            entryListComplete();
-        }
-    }
-
-    private class CancelListener implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent event) {
-            signalStopFetching();
-            dispose();
-            frame.output(Localization.lang("Import canceled by user"));
-        }
-    }
-
-    private class GenerateListener implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent event) {
-            generate.setEnabled(false);
-            generatedKeys = true; // To prevent the button from getting
-            // enabled again.
-            generateKeys(); // Generate the keys.
-        }
-    }
-
-    class DeleteListener extends AbstractAction {
+    private class DeleteListener extends AbstractAction {
 
         public DeleteListener() {
             super(Localization.lang("Delete"), IconTheme.JabRefIcon.DELETE_ENTRY.getSmallIcon());
@@ -883,12 +783,31 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         public void actionPerformed(ActionEvent event) {
             removeSelectedEntries();
         }
+
+        /**
+         * Removes all selected entries from the table. Synchronizes on this.entries
+         * to prevent conflict with addition of new entries.
+         */
+        private void removeSelectedEntries() {
+            int row = glTable.getSelectedRow();
+            List<Object> toRemove = new ArrayList<>();
+            toRemove.addAll(selectionModel.getSelected());
+            entries.getReadWriteLock().writeLock().lock();
+            for (Object o : toRemove) {
+                entries.remove(o);
+            }
+            entries.getReadWriteLock().writeLock().unlock();
+            glTable.clearSelection();
+            if ((row >= 0) && (!entries.isEmpty())) {
+                row = Math.min(entries.size() - 1, row);
+                glTable.addRowSelectionInterval(row, row);
+            }
+        }
     }
 
-    class SelectionButton implements ActionListener {
+    private class SelectionButton implements ActionListener {
 
         private final Boolean enable;
-
 
         public SelectionButton(boolean enable) {
             this.enable = enable;
@@ -903,19 +822,6 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         }
     }
 
-    private class DeselectDuplicatesButtonListener implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent event) {
-            for (int i = 0; i < glTable.getRowCount(); i++) {
-                if (glTable.getValueAt(i, DUPL_COL) != null) {
-                    glTable.setValueAt(false, i, 0);
-                }
-            }
-            glTable.repaint();
-        }
-    }
-
     private class EntrySelectionListener implements ListEventListener<BibEntry> {
 
         @Override
@@ -923,13 +829,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             if (listEvent.getSourceList().size() == 1) {
                 preview.setEntry(listEvent.getSourceList().get(0));
                 contentPane.setDividerLocation(0.5f);
-                SwingUtilities.invokeLater(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        preview.scrollRectToVisible(toRect);
-                    }
-                });
+                SwingUtilities.invokeLater(() -> preview.scrollRectToVisible(toRect));
             }
         }
     }
@@ -938,7 +838,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
      * This class handles clicks on the table that should trigger specific
      * events, like opening the popup menu.
      */
-    class TableClickListener implements MouseListener {
+    private class TableClickListener implements MouseListener {
 
         private boolean isIconColumn(int col) {
             return (col == FILE_COL) || (col == URL_COL);
@@ -952,15 +852,15 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                 BibEntry entry = sortedList.get(row);
 
                 if (col == FILE_COL) {
-                    Object o = entry.getField(Globals.FILE_FIELD);
-                    if (o != null) {
+                    if (entry.hasField(Globals.FILE_FIELD)) {
                         FileListTableModel tableModel = new FileListTableModel();
-                        tableModel.setContent((String) o);
+                        tableModel.setContent(entry.getField(Globals.FILE_FIELD));
                         if (tableModel.getRowCount() == 0) {
                             return;
                         }
                         FileListEntry fl = tableModel.getEntry(0);
-                        (new ExternalFileMenuItem(frame, entry, "", fl.getLink(), null, panel.metaData(), fl.getType()))
+                        (new ExternalFileMenuItem(frame, entry, "", fl.link, null,
+                                panel.getBibDatabaseContext(), fl.type))
                                 .actionPerformed(null);
                     }
                 } else { // Must be URL_COL
@@ -1009,18 +909,17 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             BibEntry entry = sortedList.get(row);
             JPopupMenu menu = new JPopupMenu();
             int count = 0;
-            Object o = entry.getField(Globals.FILE_FIELD);
             FileListTableModel fileList = new FileListTableModel();
-            fileList.setContent((String) o);
+            entry.getFieldOptional(Globals.FILE_FIELD).ifPresent(fileList::setContent);
             // If there are one or more links, open the first one:
             for (int i = 0; i < fileList.getRowCount(); i++) {
                 FileListEntry flEntry = fileList.getEntry(i);
-                String description = flEntry.getDescription();
+                String description = flEntry.description;
                 if ((description == null) || (description.trim().isEmpty())) {
-                    description = flEntry.getLink();
+                    description = flEntry.link;
                 }
-                menu.add(new ExternalFileMenuItem(panel.frame(), entry, description, flEntry
-                        .getLink(), flEntry.getType().getIcon(), panel.metaData(), flEntry.getType()));
+                menu.add(new ExternalFileMenuItem(panel.frame(), entry, description, flEntry.link,
+                        flEntry.type.get().getIcon(), panel.getBibDatabaseContext(), flEntry.type));
                 count++;
             }
             if (count == 0) {
@@ -1040,14 +939,13 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             final int row = glTable.rowAtPoint(e.getPoint());
             BibEntry entry = sortedList.get(row);
 
-            Object link = entry.getField(fieldName);
-            try {
-                if (link != null) {
-                    JabRefDesktop.openExternalViewer(panel.metaData(), (String) link, fieldName);
+            entry.getFieldOptional(fieldName).ifPresent(link -> {
+                try {
+                    JabRefDesktop.openExternalViewer(panel.getBibDatabaseContext(), link, fieldName);
+                } catch (IOException ex) {
+                    LOGGER.warn("Could not open link", ex);
                 }
-            } catch (IOException ex) {
-                LOGGER.warn("Could not open link", ex);
-            }
+            });
         }
 
         @Override
@@ -1074,16 +972,16 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             // Is this the duplicate icon column, and is there an icon?
             if ((col == DUPL_COL) && (glTable.getValueAt(row, col) != null)) {
                 BibEntry first = sortedList.get(row);
-                Optional<BibEntry> other = DuplicateCheck.containsDuplicate(panel.database(), first);
+                Optional<BibEntry> other = DuplicateCheck.containsDuplicate(panel.getDatabase(), first, panel.getBibDatabaseContext().getMode());
                 if (other.isPresent()) {
                     // This will be true if the duplicate is in the existing
                     // database.
                     DuplicateResolverDialog diag = new DuplicateResolverDialog(ImportInspectionDialog.this, other.get(),
-                            first, DuplicateResolverDialog.INSPECTION);
-                    PositionWindow.placeDialog(diag, ImportInspectionDialog.this);
+                            first, DuplicateResolverDialog.DuplicateResolverType.INSPECTION);
+                    diag.setLocationRelativeTo(ImportInspectionDialog.this);
                     diag.setVisible(true);
                     ImportInspectionDialog.this.toFront();
-                    if (diag.getSelected() == DuplicateResolverDialog.KEEP_UPPER) {
+                    if (diag.getSelected() == DuplicateResolverResult.KEEP_UPPER) {
                         // Remove old entry. Or... add it to a list of entries
                         // to be deleted. We only delete
                         // it after Ok is clicked.
@@ -1095,17 +993,17 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                         first.setGroupHit(false);
                         entries.getReadWriteLock().writeLock().unlock();
 
-                    } else if (diag.getSelected() == DuplicateResolverDialog.KEEP_LOWER) {
+                    } else if (diag.getSelected() == DuplicateResolverResult.KEEP_LOWER) {
                         // Remove the entry from the import inspection dialog.
                         entries.getReadWriteLock().writeLock().lock();
                         entries.remove(first);
                         entries.getReadWriteLock().writeLock().unlock();
-                    } else if (diag.getSelected() == DuplicateResolverDialog.KEEP_BOTH) {
+                    } else if (diag.getSelected() == DuplicateResolverResult.KEEP_BOTH) {
                         // Do nothing.
                         entries.getReadWriteLock().writeLock().lock();
                         first.setGroupHit(false);
                         entries.getReadWriteLock().writeLock().unlock();
-                    } else if (diag.getSelected() == DuplicateResolverDialog.KEEP_MERGE) {
+                    } else if (diag.getSelected() == DuplicateResolverResult.KEEP_MERGE) {
                         // Remove old entry. Or... add it to a list of entries
                         // to be deleted. We only delete
                         // it after Ok is clicked.
@@ -1127,19 +1025,19 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                 other = internalDuplicate(entries, first);
                 if (other.isPresent()) {
                     DuplicateResolverDialog diag = new DuplicateResolverDialog(ImportInspectionDialog.this, first,
-                            other.get(), DuplicateResolverDialog.DUPLICATE_SEARCH);
-                    PositionWindow.placeDialog(diag, ImportInspectionDialog.this);
+                            other.get(), DuplicateResolverDialog.DuplicateResolverType.DUPLICATE_SEARCH);
+                    diag.setLocationRelativeTo(ImportInspectionDialog.this);
                     diag.setVisible(true);
                     ImportInspectionDialog.this.toFront();
-                    int answer = diag.getSelected();
-                    if (answer == DuplicateResolverDialog.KEEP_UPPER) {
+                    DuplicateResolverResult answer = diag.getSelected();
+                    if (answer == DuplicateResolverResult.KEEP_UPPER) {
                         entries.remove(other.get());
                         first.setGroupHit(false);
-                    } else if (answer == DuplicateResolverDialog.KEEP_LOWER) {
+                    } else if (answer == DuplicateResolverResult.KEEP_LOWER) {
                         entries.remove(first);
-                    } else if (answer == DuplicateResolverDialog.KEEP_BOTH) {
+                    } else if (answer == DuplicateResolverResult.KEEP_BOTH) {
                         first.setGroupHit(false);
-                    } else if (answer == DuplicateResolverDialog.KEEP_MERGE) {
+                    } else if (answer == DuplicateResolverResult.KEEP_MERGE) {
                         diag.getMergedEntry().setGroupHit(false);
                         diag.getMergedEntry().setSearchHit(true);
                         entries.add(diag.getMergedEntry());
@@ -1164,8 +1062,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                 return;
             }
             BibEntry entry = selectionModel.getSelected().get(0);
-            String result = JOptionPane.showInputDialog(ImportInspectionDialog.this,
- Localization.lang("Enter URL"),
+            String result = JOptionPane.showInputDialog(ImportInspectionDialog.this, Localization.lang("Enter URL"),
                     entry.getField(URL_FIELD));
             entries.getReadWriteLock().writeLock().lock();
             if (result != null) {
@@ -1184,7 +1081,6 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             DownloadExternalFile.DownloadCallback {
 
         private BibEntry entry;
-
 
         public DownloadFile() {
             super(Localization.lang("Download file"));
@@ -1208,7 +1104,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                     bibtexKey = entry.getCiteKey();
                 }
             }
-            DownloadExternalFile def = new DownloadExternalFile(frame, metaData, bibtexKey);
+            DownloadExternalFile def = new DownloadExternalFile(frame, bibDatabaseContext, bibtexKey);
             try {
                 def.download(this);
             } catch (IOException ex) {
@@ -1220,10 +1116,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         public void downloadComplete(FileListEntry file) {
             ImportInspectionDialog.this.toFront(); // Hack
             FileListTableModel localModel = new FileListTableModel();
-            String oldVal = entry.getField(Globals.FILE_FIELD);
-            if (oldVal != null) {
-                localModel.setContent(oldVal);
-            }
+            entry.getFieldOptional(Globals.FILE_FIELD).ifPresent(localModel::setContent);
             localModel.addEntry(localModel.getRowCount(), file);
             entries.getReadWriteLock().writeLock().lock();
             entry.setField(Globals.FILE_FIELD, localModel.getStringRepresentation());
@@ -1232,10 +1125,10 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         }
     }
 
-    class AutoSetLinks extends JMenuItem implements ActionListener {
+    private class AutoSetLinks extends JMenuItem implements ActionListener {
 
         public AutoSetLinks() {
-            super(Localization.lang("Autoset external links"));
+            super(Localization.lang("Automatically set file links"));
             addActionListener(this);
         }
 
@@ -1257,34 +1150,27 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                 }
             }
             final FileListTableModel localModel = new FileListTableModel();
-            String oldVal = entry.getField(Globals.FILE_FIELD);
-            if (oldVal != null) {
-                localModel.setContent(oldVal);
-            }
+            entry.getFieldOptional(Globals.FILE_FIELD).ifPresent(localModel::setContent);
             // We have a static utility method for searching for all relevant
             // links:
             JDialog diag = new JDialog(ImportInspectionDialog.this, true);
-            JabRefExecutorService.INSTANCE.execute(net.sf.jabref.util.Util.autoSetLinks(entry, localModel, metaData, new ActionListener() {
-
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    if (e.getID() > 0) {
-                        entries.getReadWriteLock().writeLock().lock();
-                        entry.setField(Globals.FILE_FIELD, localModel.getStringRepresentation());
-                        entries.getReadWriteLock().writeLock().unlock();
-                        glTable.repaint();
-                    }
-                }
-            }, diag));
+            JabRefExecutorService.INSTANCE
+                    .execute(net.sf.jabref.util.Util.autoSetLinks(entry, localModel, bibDatabaseContext, e -> {
+                        if (e.getID() > 0) {
+                            entries.getReadWriteLock().writeLock().lock();
+                            entry.setField(Globals.FILE_FIELD, localModel.getStringRepresentation());
+                            entries.getReadWriteLock().writeLock().unlock();
+                            glTable.repaint();
+                        }
+                    }, diag));
 
         }
     }
 
-    class LinkLocalFile extends JMenuItem implements ActionListener,
+    private class LinkLocalFile extends JMenuItem implements ActionListener,
             DownloadExternalFile.DownloadCallback {
 
         private BibEntry entry;
-
 
         public LinkLocalFile() {
             super(Localization.lang("Link local file"));
@@ -1297,16 +1183,12 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                 return;
             }
             entry = selectionModel.getSelected().get(0);
-            FileListEntry flEntry = new FileListEntry("", "", null);
-            FileListEntryEditor editor = new FileListEntryEditor(frame, flEntry, false, true,
-                    metaData);
+            FileListEntry flEntry = new FileListEntry("", "");
+            FileListEntryEditor editor = new FileListEntryEditor(frame, flEntry, false, true, bibDatabaseContext);
             editor.setVisible(true, true);
             if (editor.okPressed()) {
                 FileListTableModel localModel = new FileListTableModel();
-                String oldVal = entry.getField(Globals.FILE_FIELD);
-                if (oldVal != null) {
-                    localModel.setContent(oldVal);
-                }
+                entry.getFieldOptional(Globals.FILE_FIELD).ifPresent(localModel::setContent);
                 localModel.addEntry(localModel.getRowCount(), flEntry);
                 entries.getReadWriteLock().writeLock().lock();
                 entry.setField(Globals.FILE_FIELD, localModel.getStringRepresentation());
@@ -1319,10 +1201,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         public void downloadComplete(FileListEntry file) {
             ImportInspectionDialog.this.toFront(); // Hack
             FileListTableModel localModel = new FileListTableModel();
-            String oldVal = entry.getField(Globals.FILE_FIELD);
-            if (oldVal != null) {
-                localModel.setContent(oldVal);
-            }
+            entry.getFieldOptional(Globals.FILE_FIELD).ifPresent(localModel::setContent);
             localModel.addEntry(localModel.getRowCount(), file);
             entries.getReadWriteLock().writeLock().lock();
             entry.setField(Globals.FILE_FIELD, localModel.getStringRepresentation());
@@ -1330,43 +1209,6 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             glTable.repaint();
         }
     }
-
-    class AttachFile extends JMenuItem implements ActionListener {
-
-        private final String fileType;
-
-
-        public AttachFile(String fileType) {
-            super(Localization.lang("Attach %0 file", new String[]{fileType.toUpperCase()}));
-            this.fileType = fileType;
-            addActionListener(this);
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent event) {
-
-            if (selectionModel.getSelected().size() != 1) {
-                return;
-            }
-            BibEntry entry = selectionModel.getSelected().get(0);
-            // Call up a dialog box that provides Browse, Download and auto
-            // buttons:
-            AttachFileDialog diag = new AttachFileDialog(ImportInspectionDialog.this, metaData,
-                    entry, fileType);
-            PositionWindow.placeDialog(diag, ImportInspectionDialog.this);
-            diag.setVisible(true);
-            // After the dialog has closed, if it wasn't cancelled, list the
-            // field:
-            if (!diag.cancelled()) {
-                entries.getReadWriteLock().writeLock().lock();
-                entry.setField(fileType, diag.getValue());
-                entries.getReadWriteLock().writeLock().unlock();
-                glTable.repaint();
-            }
-
-        }
-    }
-
 
     private void setupComparatorChooser() {
         // First column:
@@ -1388,10 +1230,10 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
 
         }
         // Remaining columns:
-        for (int i = PAD; i < (PAD + fields.length); i++) {
+        for (int i = PAD; i < (PAD + INSPECTION_FIELDS.size()); i++) {
             comparators = comparatorChooser.getComparatorsForColumn(i);
             comparators.clear();
-            comparators.add(new FieldComparator(fields[i - PAD]));
+            comparators.add(new FieldComparator(INSPECTION_FIELDS.get(i - PAD)));
         }
 
         // Set initial sort columns:
@@ -1411,10 +1253,32 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
     }
 
 
+    @FunctionalInterface
+    public interface CallBack {
+
+        /**
+         * This method is called by the dialog when the user has cancelled or
+         * signaled a stop. It is expected that any long-running fetch
+         * operations will stop after this method is called.
+         */
+        void stopFetching();
+    }
+
+
+    /**
+     * The "defaultSelected" boolean value determines if new entries added are
+     * selected for import or not. This value is true by default.
+     *
+     * @param defaultSelected The desired value.
+     */
+    public void setDefaultSelected(boolean defaultSelected) {
+        this.defaultSelected = defaultSelected;
+    }
+
+
     class EntryTable extends JTable {
 
         private final GeneralRenderer renderer = new GeneralRenderer(Color.white);
-
 
         public EntryTable(TableModel model) {
             super(model);
@@ -1425,11 +1289,6 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         public TableCellRenderer getCellRenderer(int row, int column) {
             return column == 0 ? getDefaultRenderer(Boolean.class) : renderer;
         }
-
-        /*
-         * public TableCellEditor getCellEditor() { return
-         * getDefaultEditor(Boolean.class); }
-         */
 
         @Override
         public Class<?> getColumnClass(int col) {
@@ -1462,7 +1321,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
 
         @Override
         public int getColumnCount() {
-            return PAD + fields.length;
+            return PAD + INSPECTION_FIELDS.size();
         }
 
         @Override
@@ -1471,7 +1330,7 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
                 return Localization.lang("Keep");
             }
             if (i >= PAD) {
-                return EntryUtil.capitalizeFirst(fields[i - PAD]);
+                return EntryUtil.capitalizeFirst(INSPECTION_FIELDS.get(i - PAD));
             }
             return "";
         }
@@ -1481,39 +1340,36 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
             if (i == 0) {
                 return entry.isSearchHit() ? Boolean.TRUE : Boolean.FALSE;
             } else if (i < PAD) {
-                Object o;
                 switch (i) {
                 case DUPL_COL:
                     return entry.isGroupHit() ? duplLabel : null;
                 case FILE_COL:
-                    o = entry.getField(Globals.FILE_FIELD);
-                    if (o == null) {
-                        return null;
-                    } else {
+                    if (entry.hasField(Globals.FILE_FIELD)) {
                         FileListTableModel model = new FileListTableModel();
-                        model.setContent((String) o);
+                        model.setContent(entry.getField(Globals.FILE_FIELD));
                         fileLabel.setToolTipText(model.getToolTipHTMLRepresentation());
                         if (model.getRowCount() > 0) {
-                            fileLabel.setIcon(model.getEntry(0).getType().getIcon());
+                            fileLabel.setIcon(model.getEntry(0).type.get().getIcon());
                         }
                         return fileLabel;
+                    } else {
+                        return null;
                     }
                 case URL_COL:
-                    o = entry.getField(URL_FIELD);
-                    if (o == null) {
-                        return null;
-                    } else {
-                        urlLabel.setToolTipText((String) o);
+                    if (entry.hasField(URL_FIELD)) {
+                        urlLabel.setToolTipText(entry.getField(URL_FIELD));
                         return urlLabel;
+                    } else {
+                        return null;
                     }
                 default:
                     return null;
                 }
             } else {
-                String field = fields[i - PAD];
-                if ("author".equals(field) || "editor".equals(field)) {
-                    String contents = entry.getField(field);
-                    return (contents == null) ? "" : AuthorList.fixAuthor_Natbib(contents);
+                String field = INSPECTION_FIELDS.get(i - PAD);
+                if (InternalBibtexFields.getFieldExtras(field).contains(FieldProperties.PERSON_NAMES)) {
+                    return entry.getFieldOptional(field).map(AuthorList::fixAuthorNatbib)
+                            .orElse("");
                 } else {
                     return entry.getField(field);
                 }
@@ -1521,7 +1377,6 @@ public class ImportInspectionDialog extends JDialog implements ImportInspector, 
         }
 
     }
-
 
     @Override
     public void setStatus(String s) {

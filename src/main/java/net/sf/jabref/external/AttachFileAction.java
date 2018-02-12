@@ -4,6 +4,7 @@ import net.sf.jabref.Globals;
 import net.sf.jabref.gui.*;
 import net.sf.jabref.gui.actions.BaseAction;
 import net.sf.jabref.gui.undo.UndoableFieldChange;
+import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.model.entry.BibEntry;
 
 /**
@@ -24,26 +25,23 @@ public class AttachFileAction implements BaseAction {
 
     @Override
     public void action() {
-        if (panel.getSelectedEntries().length != 1)
-         {
-            return; // TODO: display error message?
+        if (panel.getSelectedEntries().size() != 1) {
+            panel.output(Localization.lang("This operation requires exactly one item to be selected."));
+            return;
         }
-        BibEntry entry = panel.getSelectedEntries()[0];
-        FileListEntry flEntry = new FileListEntry("", "", null);
+        BibEntry entry = panel.getSelectedEntries().get(0);
+        FileListEntry flEntry = new FileListEntry("", "");
         FileListEntryEditor editor = new FileListEntryEditor(panel.frame(), flEntry, false, true,
-                panel.metaData());
+                panel.getBibDatabaseContext());
         editor.setVisible(true, true);
         if (editor.okPressed()) {
             FileListTableModel model = new FileListTableModel();
-            String oldVal = entry.getField(Globals.FILE_FIELD);
-            if (oldVal != null) {
-                model.setContent(oldVal);
-            }
+            entry.getFieldOptional(Globals.FILE_FIELD).ifPresent(oldVal -> model.setContent(oldVal));
             model.addEntry(model.getRowCount(), flEntry);
             String newVal = model.getStringRepresentation();
 
             UndoableFieldChange ce = new UndoableFieldChange(entry, Globals.FILE_FIELD,
-                    oldVal, newVal);
+                    entry.getField(Globals.FILE_FIELD), newVal);
             entry.setField(Globals.FILE_FIELD, newVal);
             panel.undoManager.addEdit(ce);
             panel.markBaseChanged();
