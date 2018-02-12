@@ -6,15 +6,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.jabref.logic.bibtexkeypattern.BibtexKeyPatternUtil;
+import org.jabref.logic.util.BracketedPattern;
 import org.jabref.model.database.BibDatabase;
 import org.jabref.model.entry.BibEntry;
 import org.jabref.model.strings.StringUtil;
@@ -30,8 +27,8 @@ class RegExpBasedFileFinder implements FileFinder {
     private static final Pattern ESCAPE_PATTERN = Pattern.compile("([^\\\\])\\\\([^\\\\])");
 
     private static final Pattern SQUARE_BRACKETS_PATTERN = Pattern.compile("\\[.*?\\]");
-    private String regExp;
-    private Character keywordDelimiter;
+    private final String regExp;
+    private final Character keywordDelimiter;
 
     /**
      * @param regExp The expression deciding which names are acceptable.
@@ -54,68 +51,15 @@ class RegExpBasedFileFinder implements FileFinder {
      */
     public static String expandBrackets(String bracketString, BibEntry entry, BibDatabase database,
                                         Character keywordDelimiter) {
-        Matcher m = SQUARE_BRACKETS_PATTERN.matcher(bracketString);
-        StringBuffer s = new StringBuffer();
-        while (m.find()) {
-            String replacement = getFieldAndFormat(m.group(), entry, database, keywordDelimiter);
-            m.appendReplacement(s, replacement);
+        Matcher matcher = SQUARE_BRACKETS_PATTERN.matcher(bracketString);
+        StringBuffer expandedStringBuffer = new StringBuffer();
+        while (matcher.find()) {
+            String replacement = BracketedPattern.expandBrackets(matcher.group(), keywordDelimiter, entry, database);
+            matcher.appendReplacement(expandedStringBuffer, replacement);
         }
-        m.appendTail(s);
+        matcher.appendTail(expandedStringBuffer);
 
-        return s.toString();
-    }
-
-    /**
-     * Accepts a string like [author:lower] or [title:abbr] or [auth], whereas the first part signifies the bibtex-field
-     * to get, or the key generator field marker to use, while the others are the modifiers that will be applied.
-     */
-    public static String getFieldAndFormat(String fieldAndFormat, BibEntry entry, BibDatabase database,
-                                           Character keywordDelimiter) {
-
-        String strippedFieldAndFormat = StringUtil.stripBrackets(fieldAndFormat);
-
-        int colon = strippedFieldAndFormat.indexOf(':');
-
-        String beforeColon;
-        String afterColon;
-        if (colon == -1) {
-            beforeColon = strippedFieldAndFormat;
-            afterColon = null;
-        } else {
-            beforeColon = strippedFieldAndFormat.substring(0, colon);
-            afterColon = strippedFieldAndFormat.substring(colon + 1);
-        }
-        beforeColon = beforeColon.trim();
-
-        if (beforeColon.isEmpty()) {
-            return "";
-        }
-
-        // If no field value was found, try to interpret it as a key generator field marker:
-        String fieldValue = entry.getResolvedFieldOrAlias(beforeColon, database)
-                .orElse(BibtexKeyPatternUtil.makeLabel(entry, beforeColon, keywordDelimiter, database));
-
-        if (fieldValue == null) {
-            return "";
-        }
-
-        if ((afterColon == null) || afterColon.isEmpty()) {
-            return fieldValue;
-        }
-
-        List<String> parts = Arrays.asList(afterColon.split(":"));
-        fieldValue = BibtexKeyPatternUtil.applyModifiers(fieldValue, parts, 0);
-
-        return fieldValue;
-    }
-
-    @Override
-    public Map<BibEntry, List<Path>> findAssociatedFiles(List<BibEntry> entries, List<Path> directories, List<String> extensions) {
-        Map<BibEntry, List<Path>> res = new HashMap<>();
-        for (BibEntry entry : entries) {
-            res.put(entry, findFiles(entry, extensions, directories));
-        }
-        return res;
+        return expandedStringBuffer.toString();
     }
 
     /**
@@ -126,7 +70,8 @@ class RegExpBasedFileFinder implements FileFinder {
      * @param directories The root directories to search.
      * @return A list of files paths matching the given criteria.
      */
-    private List<Path> findFiles(BibEntry entry, List<String> extensions, List<Path> directories) {
+    @Override
+    public List<Path> findAssociatedFiles(BibEntry entry, List<Path> directories, List<String> extensions) {
         String extensionRegExp = '(' + String.join("|", extensions) + ')';
         return findFile(entry, directories, extensionRegExp);
     }
