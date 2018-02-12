@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import net.sf.jabref.logic.io.MimeTypeDetector;
 import net.sf.jabref.logic.util.DOI;
 import net.sf.jabref.model.entry.BibEntry;
 
@@ -45,7 +44,7 @@ public class DoiResolution implements FullTextFinder {
         Objects.requireNonNull(entry);
         Optional<URL> pdfLink = Optional.empty();
 
-        Optional<DOI> doi = DOI.build(entry.getField("doi"));
+        Optional<DOI> doi = entry.getFieldOptional("doi").flatMap(DOI::build);
 
         if(doi.isPresent()) {
             String sciLink = doi.get().getURIAsASCIIString();

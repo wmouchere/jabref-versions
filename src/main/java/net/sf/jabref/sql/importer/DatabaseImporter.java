@@ -212,7 +212,7 @@ public class DatabaseImporter {
             final String database_id) throws SQLException {
         Map<String, GroupTreeNode> groups = new HashMap<>();
         LinkedHashMap<GroupTreeNode, String> parentIds = new LinkedHashMap<>();
-        GroupTreeNode rootNode = new GroupTreeNode(new AllEntriesGroup());
+        GroupTreeNode rootNode = GroupTreeNode.fromGroup(new AllEntriesGroup());
 
         String query = SQLUtil.queryAllFromTable("groups WHERE database_id='" + database_id + "' ORDER BY groups_id");
         try (Statement statement = conn.createStatement();
@@ -245,13 +245,15 @@ public class DatabaseImporter {
                                 rsGroups.getBoolean("case_sensitive"), rsGroups.getBoolean("reg_exp"),
                                 GroupHierarchyType.getByNumber(rsGroups.getInt("hierarchical_context")));
                         break;
+                    default:
+                        break;
                     }
                 } catch (ParseException e) {
                     LOGGER.error(e);
                 }
 
                 if (group != null) {
-                    GroupTreeNode node = new GroupTreeNode(group);
+                    GroupTreeNode node = GroupTreeNode.fromGroup(group);
                     parentIds.put(node, rsGroups.getString("parent_id"));
                     groups.put(rsGroups.getString("groups_id"), node);
                 }

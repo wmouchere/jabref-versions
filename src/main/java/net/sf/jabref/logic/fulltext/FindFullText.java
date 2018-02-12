@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Optional;
 
 import net.sf.jabref.importer.fetcher.CrossRef;
-import net.sf.jabref.logic.io.MimeTypeDetector;
 import net.sf.jabref.logic.util.DOI;
 import net.sf.jabref.model.entry.BibEntry;
 
@@ -42,9 +41,9 @@ public class FindFullText {
     public Optional<URL> findFullTextPDF(BibEntry entry) {
         // for accuracy, fetch DOI first but do not modify entry
         BibEntry clonedEntry = (BibEntry) entry.clone();
-        String doi = clonedEntry.getField("doi");
+        Optional<String> doi = clonedEntry.getFieldOptional("doi");
 
-        if (doi == null || !DOI.build(doi).isPresent()) {
+        if (!doi.isPresent() || !DOI.build(doi.get()).isPresent()) {
             CrossRef.findDOI(clonedEntry).ifPresent(e -> clonedEntry.setField("doi", e.getDOI()));
         }
 

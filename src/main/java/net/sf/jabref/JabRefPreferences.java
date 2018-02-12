@@ -1,4 +1,4 @@
-/*  Copyright (C) 2003-2015 JabRef contributors.
+/*  Copyright (C) 2003-2016 JabRef contributors.
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation; either version 2 of the License, or
@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.InvalidPreferencesFormatException;
@@ -70,7 +71,9 @@ import net.sf.jabref.logic.openoffice.OpenOfficePreferences;
 import net.sf.jabref.logic.openoffice.StyleLoader;
 import net.sf.jabref.logic.remote.RemotePreferences;
 import net.sf.jabref.logic.util.OS;
+import net.sf.jabref.logic.util.VersionPreferences;
 import net.sf.jabref.logic.util.strings.StringUtil;
+import net.sf.jabref.model.database.BibDatabaseMode;
 import net.sf.jabref.model.entry.CustomEntryType;
 import net.sf.jabref.model.entry.EntryUtil;
 import net.sf.jabref.model.entry.InternalBibtexFields;
@@ -200,7 +203,7 @@ public class JabRefPreferences {
     public static final String GROUP_INTERSECT_SELECTIONS = "groupIntersectSelections";
     public static final String GROUP_FLOAT_SELECTIONS = "groupFloatSelections";
     public static final String EDIT_GROUP_MEMBERSHIP_MODE = "groupEditGroupMembershipMode";
-    public static final String GROUP_KEYWORD_SEPARATOR = "groupKeywordSeparator";
+    public static final String KEYWORD_SEPARATOR = "groupKeywordSeparator";
     public static final String AUTO_ASSIGN_GROUP = "autoAssignGroup";
     public static final String LIST_OF_FILE_COLUMNS = "listOfFileColumns";
     public static final String EXTRA_FILE_COLUMNS = "extraFileColumns";
@@ -418,7 +421,7 @@ public class JabRefPreferences {
     private static final String USER_HOME = System.getProperty("user.home");
 
     /**
-     * Set with all custom {@link ImportFormat}s
+     * Set with all custom {@link net.sf.jabref.importer.fileformat.ImportFormat}s
      */
     public final CustomImportList customImports;
 
@@ -615,7 +618,7 @@ public class JabRefPreferences {
         defaults.put(GROUP_AUTO_HIDE, Boolean.TRUE);
         defaults.put(GROUP_SHOW_NUMBER_OF_ELEMENTS, Boolean.FALSE);
         defaults.put(AUTO_ASSIGN_GROUP, Boolean.TRUE);
-        defaults.put(GROUP_KEYWORD_SEPARATOR, ", ");
+        defaults.put(KEYWORD_SEPARATOR, ", ");
         defaults.put(EDIT_GROUP_MEMBERSHIP_MODE, Boolean.FALSE);
         defaults.put(HIGHLIGHT_GROUPS_MATCHING, "all");
         defaults.put(TOOLBAR_VISIBLE, Boolean.TRUE);
@@ -860,6 +863,9 @@ public class JabRefPreferences {
         defaults.put(MAX_BACK_HISTORY_SIZE, 10);
         defaults.put(LINE_LENGTH, 65);
         defaults.put(INDENT, 4);
+
+        //versioncheck defaults
+        defaults.put(VersionPreferences.VERSION_IGNORED_UPDATE, "");
     }
 
     public String getUser() {
@@ -1008,10 +1014,10 @@ public class JabRefPreferences {
 
         StringReader rd = new StringReader(names);
         List<String> res = new ArrayList<>();
-        String rs;
+        Optional<String> rs;
         try {
-            while ((rs = getNextUnit(rd)) != null) {
-                res.add(rs);
+            while ((rs = getNextUnit(rd)).isPresent()) {
+                res.add(rs.get());
             }
         } catch (IOException ignored) {
             // Ignored
@@ -1035,6 +1041,19 @@ public class JabRefPreferences {
         String value = (String) defaults.get(key);
         int[] rgb = getRgb(value);
         return new Color(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Returns the default BibDatabase mode, which can be either BIBTEX or BIBLATEX.
+     *
+     * @return the default BibDatabaseMode
+     */
+    public BibDatabaseMode getDefaultBibDatabaseMode() {
+        if (getBoolean(BIBLATEX_DEFAULT_MODE)) {
+            return BibDatabaseMode.BIBLATEX;
+        } else {
+            return BibDatabaseMode.BIBTEX;
+        }
     }
 
     /**
@@ -1187,7 +1206,7 @@ public class JabRefPreferences {
     }
 
 
-    private static String getNextUnit(Reader data) throws IOException {
+    private static Optional<String> getNextUnit(Reader data) throws IOException {
         // character last read
         // -1 if end of stream
         // initialization necessary, because of Java compiler
@@ -1222,12 +1241,12 @@ public class JabRefPreferences {
             }
         }
         if (res.length() > 0) {
-            return res.toString();
+            return Optional.of(res.toString());
         } else if (c == -1) {
             // end of stream
-            return null;
+            return Optional.empty();
         } else {
-            return "";
+            return Optional.of("");
         }
     }
 
@@ -1247,22 +1266,22 @@ public class JabRefPreferences {
     /**
      * Retrieves all information about the entry type in preferences, with the tag given by number.
      */
-    public CustomEntryType getCustomEntryType(int number) {
+    public Optional<CustomEntryType> getCustomEntryType(int number) {
         String nr = String.valueOf(number);
         String name = get(JabRefPreferences.CUSTOM_TYPE_NAME + nr);
         if (name == null) {
-            return null;
+            return Optional.empty();
         }
         List<String> req = getStringList(JabRefPreferences.CUSTOM_TYPE_REQ + nr);
         List<String> opt = getStringList(JabRefPreferences.CUSTOM_TYPE_OPT + nr);
         List<String> priOpt = getStringList(JabRefPreferences.CUSTOM_TYPE_PRIOPT + nr);
         if (priOpt.isEmpty()) {
-            return new CustomEntryType(EntryUtil.capitalizeFirst(name), req, opt);
+            return Optional.of(new CustomEntryType(EntryUtil.capitalizeFirst(name), req, opt));
         }
         List<String> secondary = new ArrayList<>(opt);
         secondary.removeAll(priOpt);
 
-        return new CustomEntryType(EntryUtil.capitalizeFirst(name), req, priOpt, secondary);
+        return Optional.of(new CustomEntryType(EntryUtil.capitalizeFirst(name), req, priOpt, secondary));
 
     }
 
@@ -1277,17 +1296,6 @@ public class JabRefPreferences {
         purgeSeries(JabRefPreferences.CUSTOM_TYPE_REQ, number);
         purgeSeries(JabRefPreferences.CUSTOM_TYPE_OPT, number);
         purgeSeries(JabRefPreferences.CUSTOM_TYPE_PRIOPT, number);
-    }
-
-    public void purgeCustomEntryTypes() {
-        int number = 0;
-        if(getCustomEntryType(number) != null) {
-            number++;
-        }
-
-        for(int i = 0; i < number; i++) {
-            purgeCustomEntryTypes(i);
-        }
     }
 
     /**
@@ -1373,7 +1381,7 @@ public class JabRefPreferences {
         storage.put(CLEANUP_UPGRADE_EXTERNAL_LINKS, preset.isCleanUpUpgradeExternalLinks());
         storage.put(CLEANUP_CONVERT_TO_BIBLATEX, preset.isConvertToBiblatex());
         storage.put(CLEANUP_FIX_FILE_LINKS, preset.isFixFileLinks());
-        storage.put(CLEANUP_FORMATTERS, convertListToString(preset.getFormatterCleanups().convertToString()));
+        storage.put(CLEANUP_FORMATTERS, convertListToString(preset.getFormatterCleanups().getAsStringList()));
     }
 
 }

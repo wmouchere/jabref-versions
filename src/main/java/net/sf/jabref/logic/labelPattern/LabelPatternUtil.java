@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -745,9 +746,9 @@ public class LabelPatternUtil {
             } else if ("veryshorttitle".equals(val)) {
                 return getTitleWords(1, entry.getField("title"));
             } else if ("shortyear".equals(val)) {
-                String ss = entry.getFieldOrAlias("year");
-                if (ss == null) {
-                    return "";
+                String ss = entry.getFieldOrAlias("year").orElse("");
+                if (ss.isEmpty()) {
+                    return ss;
                 } else if (ss.startsWith("in") || ss.startsWith("sub")) {
                     return "IP";
                 } else if (ss.length() > 2) {
@@ -758,13 +759,13 @@ public class LabelPatternUtil {
             } else if (val.matches("keyword\\d+")) {
                 // according to LabelPattern.php, it returns keyword number n
                 int num = Integer.parseInt(val.substring(7));
-                List<String> separatedKeywords = entry.getSeparatedKeywords();
+                Set<String> separatedKeywords = entry.getKeywords();
                 if (separatedKeywords.size() < num) {
                     // not enough keywords
                     return "";
                 } else {
                     // num counts from 1 to n, but index in arrayList count from 0 to n-1
-                    return separatedKeywords.get(num-1);
+                    return new ArrayList<>(separatedKeywords).get(num-1);
                 }
             } else if (val.matches("keywords\\d*")) {
                 // return all keywords, not separated
@@ -774,13 +775,18 @@ public class LabelPatternUtil {
                 } else {
                     num = Integer.MAX_VALUE;
                 }
-                List<String> separatedKeywords = entry.getSeparatedKeywords();
+                Set<String> separatedKeywords = entry.getKeywords();
                 StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < Math.min(separatedKeywords.size(), num); i++) {
-                    String keyword = separatedKeywords.get(i);
+                int i = 0;
+                for (String keyword : separatedKeywords) {
                     // remove all spaces
                     keyword = keyword.replaceAll("\\s+", "");
                     sb.append(keyword);
+
+                    i++;
+                    if (i >= num) {
+                        break;
+                    }
                 }
                 return sb.toString();
             } else {
@@ -802,8 +808,7 @@ public class LabelPatternUtil {
      * @return The field value.
      */
     private static String getField(BibEntry entry, String field) {
-        String s = entry.getFieldOrAlias(field);
-        return s == null ? "" : s;
+        return entry.getFieldOrAlias(field).orElse("");
     }
 
     /**

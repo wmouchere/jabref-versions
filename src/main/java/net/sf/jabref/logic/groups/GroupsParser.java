@@ -25,7 +25,7 @@ import net.sf.jabref.logic.l10n.Localization;
 /**
  * Converts string representation of groups to a parsed {@link GroupTreeNode}.
  */
-public class GroupsParser {
+class GroupsParser {
 
     public static GroupTreeNode importGroups(List<String> orderedData) throws ParseException {
         GroupTreeNode cursor = null;
@@ -43,7 +43,7 @@ public class GroupsParser {
             }
             int level = Integer.parseInt(string.substring(0, spaceIndex));
             AbstractGroup group = AbstractGroup.fromString(string.substring(spaceIndex + 1));
-            GroupTreeNode newNode = new GroupTreeNode(group);
+            GroupTreeNode newNode = GroupTreeNode.fromGroup(group);
             if (cursor == null) {
                 // create new root
                 cursor = newNode;

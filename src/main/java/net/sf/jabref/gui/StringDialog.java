@@ -78,7 +78,7 @@ class StringDialog extends JDialog {
     // The action concerned with closing the window.
     private final CloseAction closeAction = new CloseAction();
 
-    public static final String STRINGS_TITLE = Localization.lang("Strings for database");
+    private static final String STRINGS_TITLE = Localization.lang("Strings for database");
 
 
     public StringDialog(JabRefFrame frame, BasePanel panel, BibDatabase base) {
@@ -253,7 +253,7 @@ class StringDialog extends JDialog {
                     } else {
                         // Store undo information.
                         BibtexString subject = strings.get(row);
-                        panel.undoManager.addEdit(
+                        panel.getUndoManager().addEdit(
                                 new UndoableStringChange(panel, subject, true, subject.getName(), (String) value));
                         subject.setName((String) value);
                         panel.markBaseChanged();
@@ -271,7 +271,7 @@ class StringDialog extends JDialog {
                         return;
                     }
                     // Store undo information.
-                    panel.undoManager.addEdit(
+                    panel.getUndoManager().addEdit(
                             new UndoableStringChange(panel, subject, false, subject.getContent(), (String) value));
 
                     subject.setContent((String) value);
@@ -377,7 +377,7 @@ class StringDialog extends JDialog {
                 BibtexString bs = new BibtexString(newId, name, "");
 
                 // Store undo information:
-                panel.undoManager.addEdit(new UndoableInsertString(panel, panel.getDatabase(), bs));
+                panel.getUndoManager().addEdit(new UndoableInsertString(panel, panel.getDatabase(), bs));
 
                 base.addString(bs);
                 refreshTable();
@@ -429,7 +429,7 @@ class StringDialog extends JDialog {
                 // keystroke. This makes the content hang on the screen.
                 assureNotEditing();
 
-                String msg = (sel.length > 1 ? Localization.lang("Really delete the selected %0 entries?",
+                String msg = (sel.length > 1 ? Localization.lang("Really delete the %0 selected entries?",
                         Integer.toString(sel.length)) : Localization.lang("Really delete the selected entry?"));
                 int answer = JOptionPane.showConfirmDialog(parent, msg, Localization.lang("Delete strings"),
                         JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
@@ -446,7 +446,7 @@ class StringDialog extends JDialog {
                         base.removeString(subject.getId());
                     }
                     ce.end();
-                    panel.undoManager.addEdit(ce);
+                    panel.getUndoManager().addEdit(ce);
 
                     refreshTable();
                     if (!base.hasNoStrings()) {

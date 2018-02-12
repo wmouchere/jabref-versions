@@ -18,7 +18,10 @@ package net.sf.jabref.logic.groups;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
+import net.sf.jabref.importer.fileformat.ParseException;
 import net.sf.jabref.logic.search.SearchMatcher;
 import net.sf.jabref.logic.search.matchers.MatcherSet;
 import net.sf.jabref.logic.search.matchers.MatcherSets;
@@ -37,9 +40,13 @@ public class GroupTreeNode extends TreeNode<GroupTreeNode> {
      *
      * @param group the group underlying this node
      */
-    public GroupTreeNode(AbstractGroup group) {
+    private GroupTreeNode(AbstractGroup group) {
         super(GroupTreeNode.class);
         setGroup(group);
+    }
+
+    public static GroupTreeNode fromGroup(AbstractGroup group) {
+        return new GroupTreeNode(group);
     }
 
     /**
@@ -54,10 +61,37 @@ public class GroupTreeNode extends TreeNode<GroupTreeNode> {
     /**
      * Associates the specified group with this node.
      *
-     * @param group the new group (has to be non-null)
+     * @param newGroup the new group (has to be non-null)
      */
-    public void setGroup(AbstractGroup group) {
-        this.group = Objects.requireNonNull(group);
+    @Deprecated // use other overload
+    public void setGroup(AbstractGroup newGroup) {
+        this.group = Objects.requireNonNull(newGroup);
+    }
+
+    /**
+     * Associates the specified group with this node while also providing the possibility to modify previous matched
+     * entries so that they are now matched by the new group.
+     *
+     * @param newGroup the new group (has to be non-null)
+     * @param shouldKeepPreviousAssignments specifies whether previous matched entries should be carried over
+     * @param entriesInDatabase list of entries in the database
+     */
+    public Optional<EntriesGroupChange> setGroup(AbstractGroup newGroup, boolean shouldKeepPreviousAssignments,
+            List<BibEntry> entriesInDatabase) {
+        AbstractGroup oldGroup = getGroup();
+        setGroup(newGroup);
+
+        // Keep assignments from previous group
+        if (shouldKeepPreviousAssignments && newGroup.supportsAdd()) {
+            List<BibEntry> entriesMatchedByOldGroup = entriesInDatabase.stream().filter(oldGroup::isMatch)
+                    .collect(Collectors.toList());
+            if (oldGroup instanceof ExplicitGroup && newGroup instanceof ExplicitGroup) {
+                // Rename of explicit group, so remove old group assignment
+                oldGroup.remove(entriesMatchedByOldGroup);
+            }
+            return newGroup.add(entriesMatchedByOldGroup);
+        }
+        return Optional.empty();
     }
 
     /**
@@ -199,7 +233,7 @@ public class GroupTreeNode extends TreeNode<GroupTreeNode> {
     }
 
     public GroupTreeNode addSubgroup(AbstractGroup group) {
-        GroupTreeNode child = new GroupTreeNode(group);
+        GroupTreeNode child = GroupTreeNode.fromGroup(group);
         addChild(child);
         return child;
     }
@@ -211,6 +245,26 @@ public class GroupTreeNode extends TreeNode<GroupTreeNode> {
 
     @Override
     public GroupTreeNode copyNode() {
-        return new GroupTreeNode(group);
+        return GroupTreeNode.fromGroup(group);
+    }
+
+    public static GroupTreeNode parse(List<String> orderedData) throws ParseException {
+        return GroupsParser.importGroups(orderedData);
+    }
+
+    /**
+     * Determines the number of entries in the specified list which are matched by this group.
+     * @param entries list of entries to be searched
+     * @return number of hits
+     */
+    public int numberOfHits(List<BibEntry> entries) {
+        int hits = 0;
+        SearchMatcher matcher = getSearchRule();
+        for (BibEntry entry : entries) {
+            if (matcher.isMatch(entry)) {
+                hits++;
+            }
+        }
+        return hits;
     }
 }

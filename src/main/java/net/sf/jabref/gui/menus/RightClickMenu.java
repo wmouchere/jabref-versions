@@ -16,6 +16,7 @@
 package net.sf.jabref.gui.menus;
 
 import java.awt.event.ActionEvent;
+import java.util.Optional;
 
 import javax.swing.AbstractAction;
 import javax.swing.Icon;
@@ -72,8 +73,8 @@ public class RightClickMenu extends JPopupMenu implements PopupMenuListener {
 
         // If only one entry is selected, get a reference to it for adapting the menu.
         BibEntry be = null;
-        if (panel.mainTable.getSelectedRowCount() == 1) {
-            be = panel.mainTable.getSelected().get(0);
+        if (panel.getMainTable().getSelectedRowCount() == 1) {
+            be = panel.getMainTable().getSelected().get(0);
         }
 
         addPopupMenuListener(this);
@@ -106,9 +107,9 @@ public class RightClickMenu extends JPopupMenu implements PopupMenuListener {
             add(markSpecific);
             add(new GeneralAction(Actions.UNMARK_ENTRIES, Localization.lang("Unmark entries"), IconTheme.JabRefIcon.UNMARK_ENTRIES.getSmallIcon()));
         } else if (be != null) {
-            String marked = be.getField(InternalBibtexFields.MARKED);
+            Optional<String> marked = be.getFieldOptional(InternalBibtexFields.MARKED);
             // We have to check for "" too as the marked field may be empty
-            if ((marked == null) || marked.isEmpty()) {
+            if ((!marked.isPresent()) || marked.get().isEmpty()) {
                 add(new GeneralAction(Actions.MARK_ENTRIES, Localization.lang("Mark entry"), IconTheme.JabRefIcon.MARK_ENTRIES.getSmallIcon()));
                 add(markSpecific);
             } else {
@@ -218,11 +219,11 @@ public class RightClickMenu extends JPopupMenu implements PopupMenuListener {
     }
 
     private boolean areMultipleEntriesSelected() {
-        return panel.mainTable.getSelectedRowCount() > 1;
+        return panel.getMainTable().getSelectedRowCount() > 1;
     }
 
     private boolean areExactlyTwoEntriesSelected() {
-        return panel.mainTable.getSelectedRowCount() == 2;
+        return panel.getMainTable().getSelectedRowCount() == 2;
     }
 
     /**
@@ -267,8 +268,8 @@ public class RightClickMenu extends JPopupMenu implements PopupMenuListener {
     }
 
     private boolean isFieldSetForSelectedEntry(String fieldname) {
-        if (panel.mainTable.getSelectedRowCount() == 1) {
-            BibEntry entry = panel.mainTable.getSelected().get(0);
+        if (panel.getMainTable().getSelectedRowCount() == 1) {
+            BibEntry entry = panel.getMainTable().getSelected().get(0);
             return entry.getFieldNames().contains(fieldname);
         } else {
             return false;
@@ -276,8 +277,8 @@ public class RightClickMenu extends JPopupMenu implements PopupMenuListener {
     }
 
     private Icon getFileIconForSelectedEntry() {
-        if (panel.mainTable.getSelectedRowCount() == 1) {
-            BibEntry entry = panel.mainTable.getSelected().get(0);
+        if (panel.getMainTable().getSelectedRowCount() == 1) {
+            BibEntry entry = panel.getMainTable().getSelected().get(0);
             if(entry.hasField(Globals.FILE_FIELD)) {
                 JLabel label = FileListTableModel.getFirstLabel(entry.getField(Globals.FILE_FIELD));
                 if (label != null) {

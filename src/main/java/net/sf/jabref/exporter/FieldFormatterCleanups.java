@@ -9,7 +9,6 @@ import java.util.Objects;
 import java.util.StringJoiner;
 
 import net.sf.jabref.Globals;
-import net.sf.jabref.logic.FieldChange;
 import net.sf.jabref.logic.cleanup.FieldFormatterCleanup;
 import net.sf.jabref.logic.formatter.Formatter;
 import net.sf.jabref.logic.formatter.Formatters;
@@ -18,6 +17,7 @@ import net.sf.jabref.logic.formatter.bibtexfields.NormalizeMonthFormatter;
 import net.sf.jabref.logic.formatter.bibtexfields.NormalizePagesFormatter;
 import net.sf.jabref.logic.formatter.bibtexfields.OrdinalsToSuperscriptFormatter;
 import net.sf.jabref.logic.util.strings.StringUtil;
+import net.sf.jabref.model.FieldChange;
 import net.sf.jabref.model.entry.BibEntry;
 
 public class FieldFormatterCleanups {
@@ -198,7 +198,7 @@ public class FieldFormatterCleanups {
         return result.toString();
     }
 
-    public List<String> convertToString() {
+    public List<String> getAsStringList() {
         List<String> stringRepresentation = new ArrayList<>();
 
         if (enabled) {
@@ -212,7 +212,7 @@ public class FieldFormatterCleanups {
         return stringRepresentation;
     }
 
-    public static FieldFormatterCleanups parseFromString(List<String> formatterMetaList) {
+    public static FieldFormatterCleanups parse(List<String> formatterMetaList) {
 
         if (formatterMetaList != null && formatterMetaList.size() >= 2) {
             boolean enablementStatus = "enabled".equals(formatterMetaList.get(0));

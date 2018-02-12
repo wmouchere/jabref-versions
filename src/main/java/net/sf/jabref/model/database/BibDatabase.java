@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -84,11 +85,6 @@ public class BibDatabase {
     private final Set<String> internalIDs = new HashSet<>();
 
 
-    /**
-     * Configuration
-     */
-    private boolean followCrossrefs = true;
-
     private final EventBus eventBus = new EventBus();
 
     /**
@@ -110,9 +106,7 @@ public class BibDatabase {
      * sorted by the given Comparator.
      */
     public synchronized EntrySorter getSorter(Comparator<BibEntry> comp) {
-        EntrySorter sorter = new EntrySorter(entries, comp);
-        eventBus.register(sorter);
-        return sorter;
+        return new EntrySorter(new ArrayList<>(getEntries()), comp);
     }
 
     /**
@@ -147,17 +141,13 @@ public class BibDatabase {
     /**
      * Returns the entry with the given bibtex key.
      */
-    public synchronized BibEntry getEntryByKey(String key) {
-        BibEntry back = null;
-
-        int keyHash = key.hashCode(); // key hash for better performance
-
+    public synchronized Optional<BibEntry> getEntryByKey(String key) {
         for (BibEntry entry : entries) {
-            if ((entry != null) && (entry.getCiteKey() != null) && (keyHash == entry.getCiteKey().hashCode())) {
-                back = entry;
+            if (key.equals(entry.getCiteKey())) {
+                return Optional.of(entry);
             }
         }
-        return back;
+        return Optional.empty();
     }
 
     public synchronized List<BibEntry> getEntriesByKey(String key) {
@@ -349,9 +339,7 @@ public class BibDatabase {
      * if possible.
      */
     public String resolveForStrings(String content) {
-        if (content == null) {
-            throw new IllegalArgumentException("Content for resolveForStrings must not be null.");
-        }
+        Objects.requireNonNull(content, "Content for resolveForStrings must not be null.");
         return resolveContent(content, new HashSet<>());
     }
 
@@ -366,9 +354,7 @@ public class BibDatabase {
      * @return a list of bibtexentries, with all strings resolved. It is dependent on the value of inPlace whether copies are made or the given BibtexEntries are modified.
      */
     public List<BibEntry> resolveForStrings(Collection<BibEntry> entries, boolean inPlace) {
-        if (entries == null) {
-            throw new IllegalArgumentException("entries must not be null");
-        }
+        Objects.requireNonNull(entries, "entries must not be null.");
 
         List<BibEntry> results = new ArrayList<>(entries.size());
 
@@ -400,8 +386,8 @@ public class BibDatabase {
             resultingEntry = (BibEntry) entry.clone();
         }
 
-        for (String field : resultingEntry.getFieldNames()) {
-            resultingEntry.setField(field, this.resolveForStrings(resultingEntry.getField(field)));
+        for (Map.Entry<String, String> field : resultingEntry.getFieldMap().entrySet()) {
+            resultingEntry.setField(field.getKey(), this.resolveForStrings(field.getValue()));
         }
         return resultingEntry;
     }
@@ -523,22 +509,23 @@ public class BibDatabase {
         // TODO: Changed this to also consider alias fields, which is the expected
         // behavior for the preview layout and for the check whatever all fields are present.
         // But there might be unwanted side-effects?!
-        Object o = entry.getFieldOrAlias(field);
+        Optional<String> result = entry.getFieldOrAlias(field);
 
         // If this field is not set, and the entry has a crossref, try to look up the
         // field in the referred entry: Do not do this for the bibtex key.
-        if ((o == null) && (database != null) && database.followCrossrefs && !field.equals(BibEntry.KEY_FIELD)) {
-            if (entry.hasField("crossref")) {
-                BibEntry referred = database.getEntryByKey(entry.getField("crossref"));
-                if (referred != null) {
+        if (!result.isPresent() && (database != null) && !field.equals(BibEntry.KEY_FIELD)) {
+            Optional<String> crossrefKey = entry.getFieldOptional("crossref");
+            if (crossrefKey.isPresent()) {
+                Optional<BibEntry> referred = database.getEntryByKey(crossrefKey.get());
+                if (referred.isPresent()) {
                     // Ok, we found the referred entry. Get the field value from that
                     // entry. If it is unset there, too, stop looking:
-                    o = referred.getField(field);
+                    result = referred.get().getFieldOptional(field);
                 }
             }
         }
 
-        return BibDatabase.getText((String) o, database);
+        return BibDatabase.getText(result.orElse(null), database);
     }
 
     /**
@@ -553,10 +540,6 @@ public class BibDatabase {
             return database.resolveForStrings(toResolve);
         }
         return toResolve;
-    }
-
-    public void setFollowCrossrefs(boolean followCrossrefs) {
-        this.followCrossrefs = followCrossrefs;
     }
 
     public void setEpilog(String epilog) {

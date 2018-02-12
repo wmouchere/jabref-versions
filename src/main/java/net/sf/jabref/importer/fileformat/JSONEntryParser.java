@@ -17,6 +17,7 @@
 package net.sf.jabref.importer.fileformat;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import net.sf.jabref.model.entry.BibEntry;
@@ -104,7 +105,7 @@ public class JSONEntryParser {
         // Keywords
         if (bibJsonEntry.has("keywords")) {
             JSONArray keywords = bibJsonEntry.getJSONArray("keywords");
-            List<String> keywordList = new ArrayList<>();
+            LinkedHashSet<String> keywordList = new LinkedHashSet<>();
             for (int i = 0; i < keywords.length(); i++) {
                 if (!keywords.isNull(i)) {
                     keywordList.add(keywords.getString(i));
@@ -232,10 +233,11 @@ public class JSONEntryParser {
         }
 
         // Clean up abstract (often starting with Abstract)
-        String abstr = entry.getField("abstract");
-        if ((abstr != null) && abstr.startsWith("Abstract")) {
-            entry.setField("abstract", abstr.substring(8));
-        }
+        entry.getFieldOptional("abstract").ifPresent(abstractContents -> {
+            if (abstractContents.startsWith("Abstract")) {
+                entry.setField("abstract", abstractContents.substring(8));
+            }
+        });
 
         return entry;
     }

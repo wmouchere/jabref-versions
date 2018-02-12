@@ -92,6 +92,8 @@ import net.sf.jabref.gui.actions.MnemonicAwareAction;
 import net.sf.jabref.gui.actions.NewDatabaseAction;
 import net.sf.jabref.gui.actions.NewEntryAction;
 import net.sf.jabref.gui.actions.NewSubDatabaseAction;
+import net.sf.jabref.gui.actions.OpenBrowserAction;
+import net.sf.jabref.gui.actions.SearchForUpdateAction;
 import net.sf.jabref.gui.actions.SortTabsAction;
 import net.sf.jabref.gui.dbproperties.DatabasePropertiesDialog;
 import net.sf.jabref.gui.groups.EntryTableTransferHandler;
@@ -107,8 +109,6 @@ import net.sf.jabref.gui.keyboard.KeyBindingsDialog;
 import net.sf.jabref.gui.menus.ChangeEntryTypeMenu;
 import net.sf.jabref.gui.menus.FileHistoryMenu;
 import net.sf.jabref.gui.menus.RightClickMenu;
-import net.sf.jabref.gui.menus.help.DonateAction;
-import net.sf.jabref.gui.menus.help.ForkMeOnGitHubAction;
 import net.sf.jabref.gui.openoffice.OpenOfficePanel;
 import net.sf.jabref.gui.preftabs.PreferencesDialog;
 import net.sf.jabref.gui.util.FocusRequester;
@@ -213,8 +213,12 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
     private final AbstractAction newBibtexDatabaseAction = new NewDatabaseAction(this, BibDatabaseMode.BIBTEX);
     private final AbstractAction newBiblatexDatabaseAction = new NewDatabaseAction(this, BibDatabaseMode.BIBLATEX);
     private final AbstractAction newSubDatabaseAction = new NewSubDatabaseAction(this);
-    private final AbstractAction forkMeOnGitHubAction = new ForkMeOnGitHubAction();
-    private final AbstractAction donationAction = new DonateAction();
+    private final AbstractAction forkMeOnGitHubAction = new OpenBrowserAction("https://github.com/JabRef/jabref",
+            Localization.menuTitle("Fork me on GitHub"), Localization.lang("Opens JabRef's GitHub page"), IconTheme.JabRefIcon.GITHUB.getSmallIcon(), IconTheme.JabRefIcon.GITHUB.getIcon());
+    private final AbstractAction donationAction = new OpenBrowserAction("https://github.com/JabRef/jabref/wiki/Donations",
+            Localization.menuTitle("Donate to JabRef"), Localization.lang("Donate to JabRef"), IconTheme.JabRefIcon.DONATE.getSmallIcon(), IconTheme.JabRefIcon.DONATE.getIcon());
+    private final AbstractAction openForumAction = new OpenBrowserAction("http://discourse.jabref.org/",
+            Localization.menuTitle("Online help forum"), Localization.lang("Online help forum"), IconTheme.JabRefIcon.FORUM.getSmallIcon(), IconTheme.JabRefIcon.FORUM.getIcon());
     private final AbstractAction help = new HelpAction(Localization.menuTitle("Online help"), Localization.lang("Online help"),
             HelpFiles.CONTENTS, Globals.getKeyPrefs().getKey(KeyBinding.HELP));
     private final AbstractAction about = new AboutAction(Localization.menuTitle("About JabRef"), aboutDiag,
@@ -412,7 +416,7 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
     private final AbstractAction manageJournals = new ManageJournalsAction(this);
     private final AbstractAction databaseProperties = new DatabasePropertiesAction();
     private final AbstractAction bibtexKeyPattern = new BibtexKeyPatternAction();
-    private final AbstractAction errorConsole = new ErrorConsoleAction(this, Globals.streamEavesdropper, GuiAppender.CACHE);
+    private final AbstractAction errorConsole = new ErrorConsoleAction(this, Globals.getStreamEavesdropper(), GuiAppender.CACHE);
 
     private final AbstractAction dbConnect = new GeneralAction(Actions.DB_CONNECT,
             Localization.menuTitle("Connect to external SQL database"),
@@ -629,14 +633,14 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
             groupToggle.setSelected(sidePaneManager.isComponentVisible("groups"));
             previewToggle.setSelected(Globals.prefs.getBoolean(JabRefPreferences.PREVIEW_ENABLED));
             fetcherToggle.setSelected(sidePaneManager.isComponentVisible(generalFetcher.getTitle()));
-            Globals.focusListener.setFocused(bp.mainTable);
+            Globals.getFocusListener().setFocused(bp.getMainTable());
             setWindowTitle();
             editModeAction.initName();
             // Update search autocompleter with information for the correct database:
             bp.updateSearchManager();
             // Set correct enabled state for Back and Forward actions:
             bp.setBackAndForwardEnabledState();
-            new FocusRequester(bp.mainTable);
+            new FocusRequester(bp.getMainTable());
         });
 
         //Note: The registration of Apple event is at the end of initialization, because
@@ -715,7 +719,7 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
 
     // General preferences dialog.  The MacAdapter calls this method when "Preferences..."
     // is selected from the application menu.
-    public void preferences() {
+    public void showPreferencesDialog() {
         output(Localization.lang("Opening preferences..."));
         if (prefsDialog == null) {
             prefsDialog = new PreferencesDialog(JabRefFrame.this);
@@ -777,9 +781,8 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
         CustomEntryTypesManager.saveCustomEntryTypes(prefs);
 
         // Clear autosave files:
-        if (Globals.autoSaveManager != null) {
-            Globals.autoSaveManager.clearAutoSaves();
-        }
+        // TODO: Is this really needed since clearAutoSave() is called in stopAutoSaveManager() a few rows below?
+        Globals.getAutoSaveManager().ifPresent(manager -> manager.clearAutoSaves());
 
         prefs.flush();
 
@@ -789,9 +792,7 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
         }
 
         // shutdown any timers that are may be active
-        if (Globals.autoSaveManager != null) {
-            Globals.stopAutoSaveManager();
-        }
+        Globals.stopAutoSaveManager();
     }
 
     /**
@@ -1348,12 +1349,14 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
         mb.add(options);
 
         helpMenu.add(help);
+        helpMenu.add(openForumAction);
         helpMenu.addSeparator();
         helpMenu.add(errorConsole);
         helpMenu.addSeparator();
         helpMenu.add(forkMeOnGitHubAction);
         helpMenu.add(donationAction);
         helpMenu.addSeparator();
+        helpMenu.add(new SearchForUpdateAction());
         helpMenu.add(about);
         mb.add(helpMenu);
 
@@ -1474,8 +1477,12 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
         tlb.add(pushExternalButton.getComponent());
         tlb.addSeparator();
         tlb.add(donationAction);
+        tlb.add(forkMeOnGitHubAction);
     }
 
+    /**
+     * displays the String on the Status Line visible on the bottom of the JabRef mainframe
+     */
     public void output(final String s) {
         SwingUtilities.invokeLater(() -> {
             statusLine.setText(s);
@@ -1703,7 +1710,7 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            preferences();
+            showPreferencesDialog();
         }
     }
 
@@ -1735,7 +1742,7 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
     public void removeCachedEntryEditors() {
         for (int j = 0; j < tabbedPane.getTabCount(); j++) {
             BasePanel bp = (BasePanel) tabbedPane.getComponentAt(j);
-            bp.entryEditors.clear();
+            bp.getEntryEditors().clear();
         }
     }
 
@@ -1861,8 +1868,8 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
 
         @Override public void actionPerformed(ActionEvent e) {
 
-            LOGGER.debug(Globals.focusListener.getFocused().toString());
-            JComponent source = Globals.focusListener.getFocused();
+            LOGGER.debug(Globals.getFocusListener().getFocused().toString());
+            JComponent source = Globals.getFocusListener().getFocused();
             Action action = source.getActionMap().get(command);
             if (action != null) {
                 action.actionPerformed(new ActionEvent(source, 0, command));

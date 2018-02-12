@@ -35,17 +35,17 @@ import java.util.stream.Collectors;
 import net.sf.jabref.BibDatabaseContext;
 import net.sf.jabref.Globals;
 import net.sf.jabref.MetaData;
-import net.sf.jabref.logic.FieldChange;
 import net.sf.jabref.logic.bibtex.BibEntryWriter;
 import net.sf.jabref.logic.bibtex.LatexFieldFormatter;
 import net.sf.jabref.logic.bibtex.comparator.BibtexStringComparator;
 import net.sf.jabref.logic.bibtex.comparator.CrossRefEntryComparator;
 import net.sf.jabref.logic.bibtex.comparator.FieldComparator;
 import net.sf.jabref.logic.bibtex.comparator.FieldComparatorStack;
+import net.sf.jabref.logic.bibtex.comparator.IdComparator;
 import net.sf.jabref.logic.config.SaveOrderConfig;
-import net.sf.jabref.logic.id.IdComparator;
 import net.sf.jabref.logic.util.strings.StringUtil;
 import net.sf.jabref.model.EntryTypes;
+import net.sf.jabref.model.FieldChange;
 import net.sf.jabref.model.database.BibDatabase;
 import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.model.entry.BibtexString;
@@ -281,7 +281,7 @@ public class BibDatabaseWriter {
             return;
         }
 
-        Map<String, String> serializedMetaData = metaData.serialize();
+        Map<String, String> serializedMetaData = metaData.getAsStringMap();
 
         for(Map.Entry<String, String> metaItem : serializedMetaData.entrySet()) {
 
@@ -392,13 +392,8 @@ public class BibDatabaseWriter {
                 CustomEntryType customType = (CustomEntryType) type;
                 writer.write(Globals.NEWLINE);
                 writer.write(COMMENT_PREFIX + "{");
-                writer.write(CustomEntryType.ENTRYTYPE_FLAG);
-                writer.write(customType.getName());
-                writer.write(": req[");
-                writer.write(customType.getRequiredFieldsString());
-                writer.write("] opt[");
-                writer.write(String.join(";", customType.getOptionalFields()));
-                writer.write("]}");
+                writer.write(customType.getAsString());
+                writer.write("}");
                 writer.write(Globals.NEWLINE);
             }
         }
