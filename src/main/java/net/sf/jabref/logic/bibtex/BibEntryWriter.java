@@ -9,8 +9,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 
-import net.sf.jabref.Globals;
 import net.sf.jabref.logic.TypedBibEntry;
+import net.sf.jabref.logic.util.OS;
 import net.sf.jabref.logic.util.strings.StringUtil;
 import net.sf.jabref.model.EntryTypes;
 import net.sf.jabref.model.database.BibDatabaseMode;
@@ -37,10 +37,10 @@ public class BibEntryWriter {
     /**
      * Writes the given BibEntry using the given writer
      *
-     * @param entry The entry to write
-     * @param out The writer to use
+     * @param entry           The entry to write
+     * @param out             The writer to use
      * @param bibDatabaseMode The database mode (bibtex or biblatex)
-     * @param reformat Should the entry be in any case, even if no change occurred?
+     * @param reformat        Should the entry be in any case, even if no change occurred?
      */
     public void write(BibEntry entry, Writer out, BibDatabaseMode bibDatabaseMode, Boolean reformat) throws IOException {
         // if the entry has not been modified, write it as it was
@@ -48,9 +48,19 @@ public class BibEntryWriter {
             out.write(entry.getParsedSerialization());
             return;
         }
-        out.write(Globals.NEWLINE);
+
+        writeUserComments(entry, out);
+        out.write(OS.NEWLINE);
         writeRequiredFieldsFirstRemainingFieldsSecond(entry, out, bibDatabaseMode);
-        out.write(Globals.NEWLINE);
+        out.write(OS.NEWLINE);
+    }
+
+    private void writeUserComments(BibEntry entry, Writer out) throws IOException {
+        String userComments = entry.getUserComments();
+
+        if(!userComments.isEmpty()) {
+            out.write(userComments + OS.NEWLINE);
+        }
     }
 
     public void writeWithoutPrependedNewlines(BibEntry entry, Writer out, BibDatabaseMode bibDatabaseMode) throws IOException {
@@ -71,9 +81,9 @@ public class BibEntryWriter {
      * @throws IOException
      */
     private void writeRequiredFieldsFirstRemainingFieldsSecond(BibEntry entry, Writer out,
-            BibDatabaseMode bibDatabaseMode) throws IOException {
+                                                               BibDatabaseMode bibDatabaseMode) throws IOException {
         // Write header with type and bibtex-key.
-        TypedBibEntry typedEntry = new TypedBibEntry(entry, Optional.empty(), bibDatabaseMode);
+        TypedBibEntry typedEntry = new TypedBibEntry(entry, bibDatabaseMode);
         out.write('@' + typedEntry.getTypeForDisplay() + '{');
 
         writeKeyField(entry, out);
@@ -120,16 +130,16 @@ public class BibEntryWriter {
     }
 
     private void writeKeyField(BibEntry entry, Writer out) throws IOException {
-        String keyField = StringUtil.shaveString(entry.getCiteKey());
-        out.write(keyField + ',' + Globals.NEWLINE);
+        String keyField = StringUtil.shaveString(entry.getCiteKeyOptional().orElse(""));
+        out.write(keyField + ',' + OS.NEWLINE);
     }
 
     /**
      * Write a single field, if it has any content.
      *
-     * @param entry             the entry to write
-     * @param out               the target of the write
-     * @param name              The field name
+     * @param entry the entry to write
+     * @param out   the target of the write
+     * @param name  The field name
      * @throws IOException In case of an IO error
      */
     private void writeField(BibEntry entry, Writer out, String name, int indentation) throws IOException {
@@ -141,7 +151,7 @@ public class BibEntryWriter {
 
             try {
                 out.write(fieldFormatter.format(field.get(), name));
-                out.write(',' + Globals.NEWLINE);
+                out.write(',' + OS.NEWLINE);
             } catch (IOException ex) {
                 throw new IOException("Error in field '" + name + "': " + ex.getMessage());
             }
@@ -149,7 +159,7 @@ public class BibEntryWriter {
     }
 
     private int getLengthOfLongestFieldName(BibEntry entry) {
-        Predicate<String> isNotBibtexKey = field -> !"bibtexkey".equals(field);
+        Predicate<String> isNotBibtexKey = field -> !BibEntry.KEY_FIELD.equals(field);
         return entry.getFieldNames().stream().filter(isNotBibtexKey).mapToInt(String::length).max().orElse(0);
     }
 

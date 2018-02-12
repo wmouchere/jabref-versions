@@ -10,6 +10,7 @@ import javax.swing.JOptionPane;
 import net.sf.jabref.logic.groups.AbstractGroup;
 import net.sf.jabref.logic.groups.KeywordGroup;
 import net.sf.jabref.logic.l10n.Localization;
+import net.sf.jabref.model.entry.FieldName;
 import net.sf.jabref.model.entry.InternalBibtexFields;
 
 public class WarnAssignmentSideEffects {
@@ -30,12 +31,11 @@ public class WarnAssignmentSideEffects {
             if (group instanceof KeywordGroup) {
                 KeywordGroup keywordGroup = (KeywordGroup) group;
                 String field = keywordGroup.getSearchField().toLowerCase();
-                if ("keywords".equals(field) || "groups".equals(field)) {
+                if (FieldName.KEYWORDS.equals(field) || FieldName.GROUPS.equals(field)) {
                     continue; // this is not undesired
                 }
-                int len = InternalBibtexFields.numberOfPublicFields();
-                for (int i = 0; i < len; ++i) {
-                    if (field.equals(InternalBibtexFields.getFieldName(i))) {
+                for (String fieldName : InternalBibtexFields.getAllPublicFieldNames()) {
+                    if (field.equals(fieldName)) {
                         affectedFields.add(field);
                         break;
                     }

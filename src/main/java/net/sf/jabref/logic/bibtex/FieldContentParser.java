@@ -1,27 +1,11 @@
-/*  Copyright (C) 2003-2016 JabRef contributors.
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
 package net.sf.jabref.logic.bibtex;
 
 import java.util.HashSet;
-import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
-import net.sf.jabref.Globals;
-import net.sf.jabref.JabRefPreferences;
 import net.sf.jabref.logic.util.strings.StringUtil;
+import net.sf.jabref.model.entry.FieldName;
 
 /**
  * This class provides the reformatting needed when reading BibTeX fields formatted
@@ -29,19 +13,20 @@ import net.sf.jabref.logic.util.strings.StringUtil;
  * writing the same fields.
  */
 public class FieldContentParser {
-    private final HashSet<String> multiLineFields;
+
+    private final Set<String> multiLineFields;
 
     // 's' matches a space, tab, new line, carriage return.
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
-    public FieldContentParser() {
+
+    public FieldContentParser(FieldContentParserPreferences prefs) {
         multiLineFields = new HashSet<>();
         // the following two are also coded in net.sf.jabref.logic.bibtex.LatexFieldFormatter.format(String, String)
-        multiLineFields.add("abstract");
-        multiLineFields.add("review");
+        multiLineFields.add(FieldName.ABSTRACT);
+        multiLineFields.add(FieldName.REVIEW);
         // the file field should not be formatted, therefore we treat it as a multi line field
-        List<String> nonWrappableFields = Globals.prefs.getStringList(JabRefPreferences.NON_WRAPPABLE_FIELDS);
-        multiLineFields.addAll(nonWrappableFields);
+        multiLineFields.addAll(prefs.getNonWrappableFields());
     }
 
     /**

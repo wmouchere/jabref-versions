@@ -1,18 +1,3 @@
-/*  Copyright (C) 2003-2016 JabRef contributors.
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
 package net.sf.jabref.gui.worker;
 
 import java.io.IOException;
@@ -51,7 +36,7 @@ public class VersionWorker extends SwingWorker<Version, Void> {
         try {
             return Version.getLatestVersion();
         } catch (IOException ioException) {
-            LOGGER.warn("Couldn't connect to the updateserver.", ioException);
+            LOGGER.warn("Could not connect to the updateserver.", ioException);
             return null;
         }
     }
@@ -66,7 +51,7 @@ public class VersionWorker extends SwingWorker<Version, Void> {
             Version latestVersion = this.get();
 
             if (latestVersion == null){
-                String couldNotConnect = Localization.lang("Couldn't connect to the update server.");
+                String couldNotConnect = Localization.lang("Could not connect to the update server.");
                 String tryLater = Localization.lang("Please try again later and/or check your network connection.");
                 if (manualExecution) {
                     JOptionPane.showMessageDialog(this.mainFrame, couldNotConnect + "\n" + tryLater,

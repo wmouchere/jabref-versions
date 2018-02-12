@@ -1,18 +1,3 @@
-/*  Copyright (C) 2003-2016 JabRef contributors.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
 package net.sf.jabref.gui.actions;
 
 import java.awt.BorderLayout;
@@ -54,6 +39,8 @@ import net.sf.jabref.logic.autocompleter.AutoCompleter;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.model.FieldChange;
 import net.sf.jabref.model.entry.BibEntry;
+import net.sf.jabref.model.entry.FieldName;
+import net.sf.jabref.preferences.JabRefPreferences;
 import net.sf.jabref.specialfields.Printed;
 import net.sf.jabref.specialfields.Priority;
 import net.sf.jabref.specialfields.Quality;
@@ -65,8 +52,6 @@ import net.sf.jabref.specialfields.SpecialFieldsUtils;
 import com.jgoodies.forms.builder.ButtonBarBuilder;
 import com.jgoodies.forms.builder.FormBuilder;
 import com.jgoodies.forms.layout.FormLayout;
-
-import static net.sf.jabref.model.entry.BibEntry.KEYWORDS_FIELD;
 
 /**
  * An Action for launching keyword managing dialog
@@ -194,7 +179,7 @@ public class ManageKeywordsAction extends MnemonicAwareAction {
         });
 
         AutoCompleter<String> autoComp = JabRefGUI.getMainFrame().getCurrentBasePanel().getAutoCompleters()
-                .get(KEYWORDS_FIELD);
+                .get(FieldName.KEYWORDS);
         AutoCompleteListener acl = new AutoCompleteListener(autoComp);
         keyword.addKeyListener(acl);
         keyword.addFocusListener(acl);
@@ -321,7 +306,8 @@ public class ManageKeywordsAction extends MnemonicAwareAction {
             keywords.addAll(keywordsToAdd);
 
             // put keywords back
-            Optional<FieldChange> change = entry.putKeywords(keywords);
+            Optional<FieldChange> change = entry.putKeywords(keywords,
+                    Globals.prefs.get(JabRefPreferences.KEYWORD_SEPARATOR));
             if (change.isPresent()) {
                 ce.addEdit(new UndoableFieldChange(change.get()));
             }

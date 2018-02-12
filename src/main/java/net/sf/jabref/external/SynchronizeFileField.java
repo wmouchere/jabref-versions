@@ -1,18 +1,3 @@
-/*  Copyright (C) 2003-2016 JabRef contributors.
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
 package net.sf.jabref.external;
 
 import java.awt.BorderLayout;
@@ -59,6 +44,7 @@ import net.sf.jabref.gui.worker.AbstractWorker;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.logic.util.io.FileUtil;
 import net.sf.jabref.model.entry.BibEntry;
+import net.sf.jabref.model.entry.FieldName;
 
 import com.jgoodies.forms.builder.ButtonBarBuilder;
 import com.jgoodies.forms.builder.FormBuilder;
@@ -131,7 +117,7 @@ public class SynchronizeFileField extends AbstractWorker {
 
         // First we try to autoset fields
         if (autoSet) {
-            Collection<BibEntry> entries = new ArrayList<>(sel);
+            List<BibEntry> entries = new ArrayList<>(sel);
 
             // Start the automatically setting process:
             Runnable r = AutoSetLinks.autoSetLinks(entries, ce, changedEntries, null, panel.getBibDatabaseContext(), null, null);
@@ -144,7 +130,7 @@ public class SynchronizeFileField extends AbstractWorker {
             boolean removeAllBroken = false;
             mainLoop: for (BibEntry aSel : sel) {
                 panel.frame().setProgressBarValue(progress++);
-                final Optional<String> old = aSel.getFieldOptional(Globals.FILE_FIELD);
+                final Optional<String> old = aSel.getFieldOptional(FieldName.FILE);
                 // Check if a extension is set:
                 if (old.isPresent() && !(old.get().isEmpty())) {
                     FileListTableModel tableModel = new FileListTableModel();
@@ -178,7 +164,8 @@ public class SynchronizeFileField extends AbstractWorker {
                             } else {
                                 answer = JOptionPane.showOptionDialog(panel.frame(),
                                         Localization.lang("<HTML>Could not find file '%0'<BR>linked from entry '%1'</HTML>",
-                                                flEntry.link, aSel.getCiteKey()),
+                                                flEntry.link,
+                                                aSel.getCiteKeyOptional().orElse(Localization.lang("undefined"))),
                                         Localization.lang("Broken link"),
                                         JOptionPane.YES_NO_CANCEL_OPTION,
                                         JOptionPane.QUESTION_MESSAGE, null, brokenLinkOptions, brokenLinkOptions[0]
@@ -254,11 +241,11 @@ public class SynchronizeFileField extends AbstractWorker {
                         // The table has been modified. Store the change:
                         String toSet = tableModel.getStringRepresentation();
                         if (toSet.isEmpty()) {
-                            ce.addEdit(new UndoableFieldChange(aSel, Globals.FILE_FIELD, old.orElse(null), null));
-                            aSel.clearField(Globals.FILE_FIELD);
+                            ce.addEdit(new UndoableFieldChange(aSel, FieldName.FILE, old.orElse(null), null));
+                            aSel.clearField(FieldName.FILE);
                         } else {
-                            ce.addEdit(new UndoableFieldChange(aSel, Globals.FILE_FIELD, old.orElse(null), toSet));
-                            aSel.setField(Globals.FILE_FIELD, toSet);
+                            ce.addEdit(new UndoableFieldChange(aSel, FieldName.FILE, old.orElse(null), toSet));
+                            aSel.setField(FieldName.FILE, toSet);
                         }
                         changedEntries.add(aSel);
                     }

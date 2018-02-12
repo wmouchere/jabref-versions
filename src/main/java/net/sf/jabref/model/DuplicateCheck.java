@@ -1,22 +1,8 @@
-/*  Copyright (C) 2003-2015 JabRef contributors.
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
 package net.sf.jabref.model;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -26,6 +12,7 @@ import net.sf.jabref.model.database.BibDatabaseMode;
 import net.sf.jabref.model.entry.AuthorList;
 import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.model.entry.EntryType;
+import net.sf.jabref.model.entry.FieldName;
 import net.sf.jabref.model.entry.FieldProperties;
 import net.sf.jabref.model.entry.InternalBibtexFields;
 
@@ -61,10 +48,10 @@ public class DuplicateCheck {
 
 
     static {
-        DuplicateCheck.FIELD_WEIGHTS.put("author", 2.5);
-        DuplicateCheck.FIELD_WEIGHTS.put("editor", 2.5);
-        DuplicateCheck.FIELD_WEIGHTS.put("title", 3.);
-        DuplicateCheck.FIELD_WEIGHTS.put("journal", 2.);
+        DuplicateCheck.FIELD_WEIGHTS.put(FieldName.AUTHOR, 2.5);
+        DuplicateCheck.FIELD_WEIGHTS.put(FieldName.EDITOR, 2.5);
+        DuplicateCheck.FIELD_WEIGHTS.put(FieldName.TITLE, 3.);
+        DuplicateCheck.FIELD_WEIGHTS.put(FieldName.JOURNAL, 2.);
     }
 
 
@@ -84,13 +71,12 @@ public class DuplicateCheck {
         EntryType type = EntryTypes.getTypeOrDefault(one.getType(), bibDatabaseMode);
 
         // The check if they have the same required fields:
-        java.util.List<String> var = type.getRequiredFieldsFlat();
-        String[] fields = var.toArray(new String[var.size()]);
+        List<String> var = type.getRequiredFieldsFlat();
         double[] req;
-        if (fields == null) {
+        if (var == null) {
             req = new double[]{0., 0.};
         } else {
-            req = DuplicateCheck.compareFieldSet(fields, one, two);
+            req = DuplicateCheck.compareFieldSet(var, one, two);
         }
 
         if (Math.abs(req[0] - DuplicateCheck.duplicateThreshold) > DuplicateCheck.DOUBT_RANGE) {
@@ -98,17 +84,16 @@ public class DuplicateCheck {
             return req[0] >= DuplicateCheck.duplicateThreshold;
         }
         // Close to the threshold value, so we take a look at the optional fields, if any:
-        java.util.List<String> optionalFields = type.getOptionalFields();
-        fields = optionalFields.toArray(new String[optionalFields.size()]);
-        if (fields != null) {
-            double[] opt = DuplicateCheck.compareFieldSet(fields, one, two);
+        List<String> optionalFields = type.getOptionalFields();
+        if (optionalFields != null) {
+            double[] opt = DuplicateCheck.compareFieldSet(optionalFields, one, two);
             double totValue = ((DuplicateCheck.REQUIRED_WEIGHT * req[0] * req[1]) + (opt[0] * opt[1])) / ((req[1] * DuplicateCheck.REQUIRED_WEIGHT) + opt[1]);
             return totValue >= DuplicateCheck.duplicateThreshold;
         }
         return req[0] >= DuplicateCheck.duplicateThreshold;
     }
 
-    private static double[] compareFieldSet(String[] fields, BibEntry one, BibEntry two) {
+    private static double[] compareFieldSet(List<String> fields, BibEntry one, BibEntry two) {
         double res = 0;
         double totWeights = 0.;
         for (String field : fields) {
@@ -158,7 +143,7 @@ public class DuplicateCheck {
                 return EQUAL;
             }
             return NOT_EQUAL;
-        } else if ("pages".equals(field)) {
+        } else if (FieldName.PAGES.equals(field)) {
             // Pages can be given with a variety of delimiters, "-", "--", " - ", " -- ".
             // We do a replace to harmonize these to a simple "-":
             // After this, a simple test for equality should be enough:
@@ -168,7 +153,7 @@ public class DuplicateCheck {
                 return EQUAL;
             }
             return NOT_EQUAL;
-        } else if ("journal".equals(field)) {
+        } else if (FieldName.JOURNAL.equals(field)) {
             // We do not attempt to harmonize abbreviation state of the journal names,
             // but we remove periods from the names in case they are abbreviated with
             // and without dots:

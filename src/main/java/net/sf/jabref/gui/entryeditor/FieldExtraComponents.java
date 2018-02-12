@@ -1,24 +1,6 @@
-/*  Copyright (C) 2003-2016 JabRef contributors.
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
 package net.sf.jabref.gui.entryeditor;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -36,7 +18,6 @@ import javax.swing.event.DocumentListener;
 import javax.swing.text.JTextComponent;
 
 import net.sf.jabref.Globals;
-import net.sf.jabref.JabRefPreferences;
 import net.sf.jabref.gui.BasePanel;
 import net.sf.jabref.gui.FieldContentSelector;
 import net.sf.jabref.gui.JabRefFrame;
@@ -44,18 +25,22 @@ import net.sf.jabref.gui.date.DatePickerButton;
 import net.sf.jabref.gui.desktop.JabRefDesktop;
 import net.sf.jabref.gui.entryeditor.EntryEditor.StoreFieldAction;
 import net.sf.jabref.gui.fieldeditors.FieldEditor;
-import net.sf.jabref.gui.mergeentries.MergeEntryDOIDialog;
+import net.sf.jabref.gui.mergeentries.FetchAndMergeEntry;
 import net.sf.jabref.gui.undo.UndoableFieldChange;
+import net.sf.jabref.logic.journals.JournalAbbreviationPreferences;
 import net.sf.jabref.logic.journals.JournalAbbreviationRepository;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.logic.net.URLUtil;
 import net.sf.jabref.logic.util.DOI;
+import net.sf.jabref.logic.util.ISBN;
 import net.sf.jabref.logic.util.date.EasyDateFormat;
 import net.sf.jabref.model.database.BibDatabaseMode;
 import net.sf.jabref.model.entry.BibEntry;
+import net.sf.jabref.model.entry.FieldName;
 import net.sf.jabref.model.entry.FieldProperties;
 import net.sf.jabref.model.entry.InternalBibtexFields;
 import net.sf.jabref.model.entry.MonthUtil;
+import net.sf.jabref.preferences.JabRefPreferences;
 
 public class FieldExtraComponents {
 
@@ -93,7 +78,8 @@ public class FieldExtraComponents {
         button.setToolTipText(ABBREVIATION_TOOLTIP_TEXT);
         button.addActionListener(actionEvent -> {
             String text = editor.getText();
-            JournalAbbreviationRepository abbreviationRepository = Globals.journalAbbreviationLoader.getRepository();
+            JournalAbbreviationRepository abbreviationRepository = Globals.journalAbbreviationLoader
+                    .getRepository(JournalAbbreviationPreferences.fromPreferences(Globals.prefs));
             if (abbreviationRepository.isKnownName(text)) {
                 String s = abbreviationRepository.getNextAbbreviation(text).orElse(text);
 
@@ -187,15 +173,19 @@ public class FieldExtraComponents {
         doiButton.addActionListener(actionEvent -> {
             Optional<DOI> doi = DOI.fromBibEntry(entryEditor.getEntry());
             if (doi.isPresent()) {
-                entryEditor.getEntry().setField("doi", doi.get().getDOI());
+                entryEditor.getEntry().setField(FieldName.DOI, doi.get().getDOI());
             } else {
-                panel.frame().setStatus(Localization.lang("No DOI found"));
+                panel.frame().setStatus(Localization.lang("No %0 found", FieldName.getDisplayName(FieldName.DOI)));
             }
         });
         // fetch bibtex data
-        JButton fetchButton = new JButton(Localization.lang("Get BibTeX data from DOI"));
+        JButton fetchButton = new JButton(
+                Localization.lang("Get BibTeX data from %0", FieldName.getDisplayName(FieldName.DOI)));
         fetchButton.setEnabled(false);
-        fetchButton.addActionListener(actionEvent -> new MergeEntryDOIDialog(panel));
+        fetchButton.addActionListener(actionEvent -> {
+            BibEntry entry = entryEditor.getEntry();
+            new FetchAndMergeEntry(entry, panel, FieldName.DOI);
+        });
 
         controls.add(button, BorderLayout.NORTH);
         controls.add(doiButton, BorderLayout.CENTER);
@@ -233,6 +223,107 @@ public class FieldExtraComponents {
         });
 
         return Optional.of(controls);
+    }
+
+    /**
+     * Add button for fetching by ISBN
+     *
+     * @param fieldEditor
+     * @param panel
+     * @return
+     */
+    public static Optional<JComponent> getIsbnExtraComponent(BasePanel panel, EntryEditor entryEditor,
+            FieldEditor fieldEditor) {
+        // fetch bibtex data
+        JButton fetchButton = new JButton(
+                Localization.lang("Get BibTeX data from %0", FieldName.getDisplayName(FieldName.ISBN)));
+        fetchButton.setEnabled(false);
+        fetchButton.addActionListener(actionEvent -> {
+            BibEntry entry = entryEditor.getEntry();
+            new FetchAndMergeEntry(entry, panel, FieldName.ISBN);
+        });
+
+        // enable/disable button
+        JTextComponent isbn = (JTextComponent) fieldEditor;
+
+        isbn.getDocument().addDocumentListener(new DocumentListener() {
+
+            @Override
+            public void changedUpdate(DocumentEvent documentEvent) {
+                checkIsbn();
+            }
+
+            @Override
+            public void insertUpdate(DocumentEvent documentEvent) {
+                checkIsbn();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent documentEvent) {
+                checkIsbn();
+            }
+
+            private void checkIsbn() {
+                ISBN isbnString = new ISBN(isbn.getText());
+                if (isbnString.isValidFormat()) {
+                    fetchButton.setEnabled(true);
+                } else {
+                    fetchButton.setEnabled(false);
+                }
+            }
+        });
+
+        return Optional.of(fetchButton);
+    }
+
+    /**
+     * Add button for fetching by ISBN
+     *
+     * @param fieldEditor
+     * @param panel
+     * @return
+     */
+    public static Optional<JComponent> getEprintExtraComponent(BasePanel panel, EntryEditor entryEditor,
+            FieldEditor fieldEditor) {
+        // fetch bibtex data
+        JButton fetchButton = new JButton(
+                Localization.lang("Get BibTeX data from %0", FieldName.getDisplayName(FieldName.EPRINT)));
+        fetchButton.setEnabled(false);
+        fetchButton.addActionListener(actionEvent -> {
+            BibEntry entry = entryEditor.getEntry();
+            new FetchAndMergeEntry(entry, panel, FieldName.EPRINT);
+        });
+
+        // enable/disable button
+        JTextComponent eprint = (JTextComponent) fieldEditor;
+
+        eprint.getDocument().addDocumentListener(new DocumentListener() {
+
+            @Override
+            public void changedUpdate(DocumentEvent documentEvent) {
+                checkEprint();
+            }
+
+            @Override
+            public void insertUpdate(DocumentEvent documentEvent) {
+                checkEprint();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent documentEvent) {
+                checkEprint();
+            }
+
+            private void checkEprint() {
+                if ((eprint.getText() == null) || eprint.getText().trim().isEmpty()) {
+                    fetchButton.setEnabled(false);
+                } else {
+                    fetchButton.setEnabled(true);
+                }
+            }
+        });
+
+        return Optional.of(fetchButton);
     }
 
     /**
@@ -304,21 +395,6 @@ public class FieldExtraComponents {
     }
 
     /**
-     * Set up a drop target for URLs for fields with EXTRA_URL
-     *
-     * @param fieldEditor
-     * @param storeFieldAction
-     * @return
-     */
-    public static Optional<JComponent> getURLExtraComponent(FieldEditor fieldEditor,
-            StoreFieldAction storeFieldAction) {
-        ((JComponent) fieldEditor).setDropTarget(new DropTarget((Component) fieldEditor, DnDConstants.ACTION_NONE,
-                new SimpleUrlDragDrop(fieldEditor, storeFieldAction)));
-
-        return Optional.empty();
-    }
-
-    /**
      * Return a button opening a content selector for fields where one exists
      *
      * @param frame
@@ -346,13 +422,14 @@ public class FieldExtraComponents {
      * @param isDatePicker
      * @return
      */
-    public static Optional<JComponent> getDateTimeExtraComponent(FieldEditor editor, Boolean isDatePicker) {
+    public static Optional<JComponent> getDateTimeExtraComponent(FieldEditor editor, Boolean isDatePicker,
+            Boolean isoFormat) {
         ((JTextArea) editor).addMouseListener(new MouseAdapter() {
 
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {// double click
-                    String date = new EasyDateFormat().getCurrentDate();
+                    String date = EasyDateFormat.isoDateFormat().getCurrentDate();
                     editor.setText(date);
                 }
             }
@@ -360,7 +437,7 @@ public class FieldExtraComponents {
 
         // insert a datepicker, if the extras field contains this command
         if (isDatePicker) {
-            DatePickerButton datePicker = new DatePickerButton(editor);
+            DatePickerButton datePicker = new DatePickerButton(editor, isoFormat);
             return Optional.of(datePicker.getDatePicker());
         } else {
             return Optional.empty();

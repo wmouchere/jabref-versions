@@ -2,7 +2,6 @@ package net.sf.jabref.benchmarks;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -11,16 +10,17 @@ import java.util.stream.Collectors;
 import net.sf.jabref.BibDatabaseContext;
 import net.sf.jabref.Defaults;
 import net.sf.jabref.Globals;
-import net.sf.jabref.JabRefPreferences;
 import net.sf.jabref.MetaData;
-import net.sf.jabref.exporter.BibDatabaseWriter;
-import net.sf.jabref.exporter.SavePreferences;
-import net.sf.jabref.importer.ParserResult;
-import net.sf.jabref.importer.fileformat.BibtexParser;
-import net.sf.jabref.importer.fileformat.ParseException;
+import net.sf.jabref.logic.exporter.BibtexDatabaseWriter;
+import net.sf.jabref.logic.exporter.SavePreferences;
+import net.sf.jabref.logic.exporter.StringSaveSession;
 import net.sf.jabref.logic.formatter.bibtexfields.HtmlToLatexFormatter;
 import net.sf.jabref.logic.groups.GroupHierarchyType;
 import net.sf.jabref.logic.groups.KeywordGroup;
+import net.sf.jabref.logic.importer.ImportFormatPreferences;
+import net.sf.jabref.logic.importer.ParserResult;
+import net.sf.jabref.logic.importer.fileformat.BibtexParser;
+import net.sf.jabref.logic.importer.util.ParseException;
 import net.sf.jabref.logic.layout.format.HTMLChars;
 import net.sf.jabref.logic.layout.format.LatexToUnicodeFormatter;
 import net.sf.jabref.logic.search.SearchQuery;
@@ -28,6 +28,7 @@ import net.sf.jabref.model.database.BibDatabase;
 import net.sf.jabref.model.database.BibDatabaseMode;
 import net.sf.jabref.model.database.BibDatabaseModeDetection;
 import net.sf.jabref.model.entry.BibEntry;
+import net.sf.jabref.preferences.JabRefPreferences;
 
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -45,7 +46,7 @@ public class Benchmarks {
     private String htmlConversionString;
 
     @Setup
-    public void init() throws IOException {
+    public void init() throws Exception {
         Globals.prefs = JabRefPreferences.getInstance();
 
         Random randomizer = new Random();
@@ -60,13 +61,11 @@ public class Benchmarks {
             entry.setField("rnd", "2" + randomizer.nextInt());
             database.insertEntry(entry);
         }
-        BibDatabaseWriter databaseWriter = new BibDatabaseWriter();
-        StringWriter stringWriter = new StringWriter();
-
-        databaseWriter.writePartOfDatabase(stringWriter,
+        BibtexDatabaseWriter<StringSaveSession> databaseWriter = new BibtexDatabaseWriter<>(StringSaveSession::new);
+        StringSaveSession saveSession = databaseWriter.savePartOfDatabase(
                 new BibDatabaseContext(database, new MetaData(), new Defaults()), database.getEntries(),
                 new SavePreferences());
-        bibtexString = stringWriter.toString();
+        bibtexString = saveSession.getStringValue();
 
         latexConversionString = "{A} \\textbf{bold} approach {\\it to} ${{\\Sigma}}{\\Delta}$ modulator \\textsuperscript{2} \\$";
 
@@ -76,19 +75,18 @@ public class Benchmarks {
     @Benchmark
     public ParserResult parse() throws IOException {
         StringReader bibtexStringReader = new StringReader(bibtexString);
-        BibtexParser parser = new BibtexParser(bibtexStringReader);
+        BibtexParser parser = new BibtexParser(bibtexStringReader,
+                ImportFormatPreferences.fromPreferences(Globals.prefs));
         return parser.parse();
     }
 
     @Benchmark
-    public String write() throws IOException {
-        StringWriter stringWriter = new StringWriter();
-
-        BibDatabaseWriter databaseWriter = new BibDatabaseWriter();
-        databaseWriter.writePartOfDatabase(stringWriter,
+    public String write() throws Exception {
+        BibtexDatabaseWriter<StringSaveSession> databaseWriter = new BibtexDatabaseWriter<>(StringSaveSession::new);
+        StringSaveSession saveSession = databaseWriter.savePartOfDatabase(
                 new BibDatabaseContext(database, new MetaData(), new Defaults()), database.getEntries(),
                 new SavePreferences());
-        return stringWriter.toString();
+        return saveSession.getStringValue();
     }
 
     @Benchmark
@@ -126,12 +124,12 @@ public class Benchmarks {
     @Benchmark
     public boolean keywordGroupContains() throws ParseException {
         KeywordGroup group = new KeywordGroup("testGroup", "keyword", "testkeyword", false, false,
-                GroupHierarchyType.INDEPENDENT);
+                GroupHierarchyType.INDEPENDENT, Globals.prefs);
         return group.containsAll(database.getEntries());
     }
 
     @Benchmark
-    public boolean keywordGroupContainsWord() throws ParseException {
+    public boolean keywordGroupContainsWord() {
         return KeywordGroup.containsWord("testWord", "Some longer test string containing testWord the test word");
     }
 

@@ -1,18 +1,3 @@
-/*  Copyright (C) 2003-2016 JabRef contributors.
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
 package net.sf.jabref.gui.groups;
 
 import java.awt.BorderLayout;
@@ -43,21 +28,22 @@ import javax.swing.SwingConstants;
 import javax.swing.event.CaretListener;
 
 import net.sf.jabref.Globals;
-import net.sf.jabref.JabRefPreferences;
 import net.sf.jabref.gui.BasePanel;
 import net.sf.jabref.gui.FieldContentSelector;
 import net.sf.jabref.gui.JabRefFrame;
 import net.sf.jabref.gui.fieldeditors.TextField;
 import net.sf.jabref.gui.keyboard.KeyBinding;
-import net.sf.jabref.importer.fileformat.ParseException;
 import net.sf.jabref.logic.groups.AbstractGroup;
 import net.sf.jabref.logic.groups.ExplicitGroup;
 import net.sf.jabref.logic.groups.GroupHierarchyType;
 import net.sf.jabref.logic.groups.KeywordGroup;
 import net.sf.jabref.logic.groups.SearchGroup;
+import net.sf.jabref.logic.importer.util.ParseException;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.logic.search.SearchQuery;
 import net.sf.jabref.logic.util.strings.StringUtil;
+import net.sf.jabref.model.entry.FieldName;
+import net.sf.jabref.preferences.JabRefPreferences;
 
 import com.jgoodies.forms.builder.ButtonBarBuilder;
 import com.jgoodies.forms.builder.DefaultFormBuilder;
@@ -89,7 +75,7 @@ class GroupDialog extends JDialog {
             Localization.lang("Include subgroups: When selected, view entries contained in this group or its subgroups"));
     // for KeywordGroup
     private final JTextField keywordGroupSearchField = new JTextField(GroupDialog.TEXTFIELD_LENGTH);
-    private final TextField keywordGroupSearchTerm = new TextField("keywords", "", false);
+    private final TextField keywordGroupSearchTerm = new TextField(FieldName.KEYWORDS, "", false);
     private final JCheckBox keywordGroupCaseSensitive = new JCheckBox(Localization.lang("Case sensitive"));
     private final JCheckBox keywordGroupRegExp = new JCheckBox(Localization.lang("regular expression"));
     // for SearchGroup
@@ -279,14 +265,14 @@ class GroupDialog extends JDialog {
                 isOkPressed = true;
             try {
                 if (explicitRadioButton.isSelected()) {
-                    resultingGroup = new ExplicitGroup(nameField.getText().trim(), getContext());
+                    resultingGroup = new ExplicitGroup(nameField.getText().trim(), getContext(), Globals.prefs);
                 } else if (keywordsRadioButton.isSelected()) {
                     // regex is correct, otherwise OK would have been disabled
                     // therefore I don't catch anything here
                     resultingGroup = new KeywordGroup(nameField.getText().trim(), keywordGroupSearchField.getText().trim(),
                             keywordGroupSearchTerm.getText().trim(), keywordGroupCaseSensitive.isSelected(), keywordGroupRegExp
                             .isSelected(),
-                            getContext());
+                            getContext(), Globals.prefs);
                 } else if (searchRadioButton.isSelected()) {
                     try {
                         // regex is correct, otherwise OK would have been
@@ -317,7 +303,7 @@ class GroupDialog extends JDialog {
         searchGroupCaseSensitive.addItemListener(itemListener);
 
         // configure for current type
-        if (editedGroup != null && editedGroup.getClass() == KeywordGroup.class) {
+        if ((editedGroup != null) && (editedGroup.getClass() == KeywordGroup.class)) {
             KeywordGroup group = (KeywordGroup) editedGroup;
             nameField.setText(group.getName());
             keywordGroupSearchField.setText(group.getSearchField());
@@ -326,7 +312,7 @@ class GroupDialog extends JDialog {
             keywordGroupRegExp.setSelected(group.isRegExp());
             keywordsRadioButton.setSelected(true);
             setContext(editedGroup.getHierarchicalContext());
-        } else if (editedGroup != null && editedGroup.getClass() == SearchGroup.class) {
+        } else if ((editedGroup != null) && (editedGroup.getClass() == SearchGroup.class)) {
             SearchGroup group = (SearchGroup) editedGroup;
             nameField.setText(group.getName());
             searchGroupSearchExpression.setText(group.getSearchExpression());
@@ -334,7 +320,7 @@ class GroupDialog extends JDialog {
             searchGroupRegExp.setSelected(group.isRegExp());
             searchRadioButton.setSelected(true);
             setContext(editedGroup.getHierarchicalContext());
-        } else if (editedGroup != null && editedGroup.getClass() == ExplicitGroup.class) {
+        } else if ((editedGroup != null) && (editedGroup.getClass() == ExplicitGroup.class)) {
             nameField.setText(editedGroup.getName());
             explicitRadioButton.setSelected(true);
             setContext(editedGroup.getHierarchicalContext());
