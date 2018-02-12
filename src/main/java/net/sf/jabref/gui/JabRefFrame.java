@@ -76,6 +76,7 @@ import net.sf.jabref.gui.actions.SearchForUpdateAction;
 import net.sf.jabref.gui.actions.SortTabsAction;
 import net.sf.jabref.gui.autosaveandbackup.AutosaveUIManager;
 import net.sf.jabref.gui.bibtexkeypattern.BibtexKeyPatternDialog;
+import net.sf.jabref.gui.customentrytypes.EntryCustomizationDialog;
 import net.sf.jabref.gui.dbproperties.DatabasePropertiesDialog;
 import net.sf.jabref.gui.exporter.ExportAction;
 import net.sf.jabref.gui.exporter.ExportCustomizationDialog;
@@ -109,7 +110,6 @@ import net.sf.jabref.gui.specialfields.SpecialFieldDropDown;
 import net.sf.jabref.gui.specialfields.SpecialFieldValueViewModel;
 import net.sf.jabref.gui.util.WindowLocation;
 import net.sf.jabref.gui.worker.MarkEntriesAction;
-import net.sf.jabref.logic.CustomEntryTypesManager;
 import net.sf.jabref.logic.autosaveandbackup.AutosaveManager;
 import net.sf.jabref.logic.autosaveandbackup.BackupManager;
 import net.sf.jabref.logic.help.HelpFile;
@@ -301,6 +301,10 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
             IconTheme.JabRefIcon.PRINTED.getIcon());
     private final AbstractAction normalSearch = new GeneralAction(Actions.SEARCH, Localization.menuTitle("Search"),
             Localization.lang("Search"), Globals.getKeyPrefs().getKey(KeyBinding.SEARCH), IconTheme.JabRefIcon.SEARCH.getIcon());
+    private final AbstractAction manageSelectors = new GeneralAction(Actions.MANAGE_SELECTORS,
+            Localization.menuTitle("Manage content selectors"));
+    private final AbstractAction copyPreview = new GeneralAction(Actions.COPY_CITATION_HTML, Localization.lang("Copy preview"),
+            Globals.getKeyPrefs().getKey(KeyBinding.COPY_PREVIEW));
 
     private final AbstractAction copyKey = new GeneralAction(Actions.COPY_KEY, Localization.menuTitle("Copy BibTeX key"),
             Globals.getKeyPrefs().getKey(KeyBinding.COPY_BIBTEX_KEY));
@@ -438,8 +442,9 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
             IconTheme.JabRefIcon.MERGE_ENTRIES.getIcon());
 
     private final AbstractAction downloadFullText = new GeneralAction(Actions.DOWNLOAD_FULL_TEXT,
-            Localization.menuTitle("Look up full text document"),
-            Localization.lang("Follow DOI or URL link and try to locate PDF full text document"));
+            Localization.menuTitle("Look up full text documents"),
+            Localization.lang("Look up full text documents"));
+
     private final AbstractAction increaseFontSize = new IncreaseTableFontSizeAction();
     private final AbstractAction decreseFontSize = new DecreaseTableFontSizeAction();
     private final AbstractAction resolveDuplicateKeys = new GeneralAction(Actions.RESOLVE_DUPLICATE_KEYS,
@@ -494,7 +499,7 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
     private final List<Object> oneEntryWithFileOnlyActions = new LinkedList<>();
     private final List<Object> oneEntryWithURLorDOIOnlyActions = new LinkedList<>();
     private final List<Object> twoEntriesOnlyActions = new LinkedList<>();
-
+    private final List<Object> atLeastOneEntryActions = new LinkedList<>();
 
     private class EditModeAction extends AbstractAction {
 
@@ -536,7 +541,6 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
     public JabRefFrame() {
         init();
         updateEnabledState();
-
     }
 
     private List<NewEntryAction> getNewEntryActions() {
@@ -788,7 +792,6 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
         fileHistory.storeHistory();
         prefs.customExports.store(Globals.prefs);
         prefs.customImports.store();
-        CustomEntryTypesManager.saveCustomEntryTypes(prefs);
 
         prefs.flush();
 
@@ -1152,6 +1155,7 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
         edit.add(copyCiteKey);
         edit.add(copyKeyAndTitle);
         edit.add(copyKeyAndLink);
+        edit.add(copyPreview);
         edit.add(exportToClipboard);
         edit.add(sendAsEmail);
 
@@ -1329,6 +1333,7 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
         options.add(manageJournals);
         options.add(protectTerms);
         options.add(selectKeys);
+        options.add(manageSelectors);
         mb.add(options);
 
         helpMenu.add(help);
@@ -1492,7 +1497,7 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
 
     private void initActions() {
         openDatabaseOnlyActions.clear();
-        openDatabaseOnlyActions.addAll(Arrays.asList(mergeDatabaseAction, newSubDatabaseAction, save,
+        openDatabaseOnlyActions.addAll(Arrays.asList(manageSelectors, mergeDatabaseAction, newSubDatabaseAction, save, copyPreview,
                 saveAs, saveSelectedAs, saveSelectedAsPlain, editModeAction, undo, redo, cut, deleteEntry, copy, paste, mark, markSpecific, unmark,
                 unmarkAll, rankSubMenu, editEntry, selectAll, copyKey, copyCiteKey, copyKeyAndTitle, copyKeyAndLink, editPreamble, editStrings,
                 groupSelector.getToggleAction(), makeKeyAction, normalSearch, generalFetcher.getToggleAction(), mergeEntries, cleanupEntries, exportToClipboard, replaceAll,
@@ -1527,6 +1532,9 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
 
         twoEntriesOnlyActions.clear();
         twoEntriesOnlyActions.addAll(Arrays.asList(mergeEntries));
+
+        atLeastOneEntryActions.clear();
+        atLeastOneEntryActions.addAll(Arrays.asList(downloadFullText));
 
         tabbedPane.addChangeListener(event -> updateEnabledState());
 
@@ -1572,12 +1580,12 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
             getForwardAction().setEnabled(false);
             setEnabled(openAndSavedDatabasesOnlyActions, false);
             setEnabled(sharedDatabaseOnlyActions, false);
+            setEnabled(oneEntryOnlyActions, false);
         }
-
 
         if (tabCount > 0) {
             BasePanel current = getCurrentBasePanel();
-            boolean saved = current.getBibDatabaseContext().getDatabaseFile().isPresent();
+            boolean saved = current.getBibDatabaseContext().getDatabasePath().isPresent();
             setEnabled(openAndSavedDatabasesOnlyActions, saved);
 
             boolean isShared = current.getBibDatabaseContext().getLocation() == DatabaseLocation.SHARED;
@@ -1591,6 +1599,9 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
 
             boolean twoEntriesSelected = current.getSelectedEntries().size() == 2;
             setEnabled(twoEntriesOnlyActions, twoEntriesSelected);
+
+            boolean atLeastOneEntrySelected = !current.getSelectedEntries().isEmpty();
+            setEnabled(atLeastOneEntryActions, atLeastOneEntrySelected);
         }
     }
 
@@ -1684,9 +1695,7 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
             autosaver.registerListener(new AutosaveUIManager(basePanel));
         }
 
-        if (readyForBackup(context)) {
-            BackupManager.start(context);
-        }
+        BackupManager.start(context);
     }
 
     public BasePanel addTab(BibDatabaseContext databaseContext, boolean raisePanel) {
@@ -1702,9 +1711,6 @@ public class JabRefFrame extends JFrame implements OutputPrinter {
                 context.getDatabaseFile().isPresent();
     }
 
-    private boolean readyForBackup(BibDatabaseContext context) {
-        return context.getLocation() == DatabaseLocation.LOCAL && context.getDatabaseFile().isPresent();
-    }
 
     /**
      * Creates icons for the disabled state for all JMenuItems with FontBasedIcons in the given menuElement.

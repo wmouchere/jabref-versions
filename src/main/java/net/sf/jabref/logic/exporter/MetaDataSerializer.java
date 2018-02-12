@@ -12,6 +12,7 @@ import net.sf.jabref.model.bibtexkeypattern.AbstractBibtexKeyPattern;
 import net.sf.jabref.model.bibtexkeypattern.GlobalBibtexKeyPattern;
 import net.sf.jabref.model.cleanup.FieldFormatterCleanups;
 import net.sf.jabref.model.groups.GroupTreeNode;
+import net.sf.jabref.model.metadata.ContentSelector;
 import net.sf.jabref.model.metadata.MetaData;
 import net.sf.jabref.model.strings.StringUtil;
 
@@ -39,6 +40,11 @@ public class MetaDataSerializer {
                 path -> stringyMetaData.put(MetaData.FILE_DIRECTORY, Collections.singletonList(path.trim())));
         metaData.getUserFileDirectories().forEach((user, path) -> stringyMetaData
                 .put(MetaData.FILE_DIRECTORY + '-' + user, Collections.singletonList(path.trim())));
+
+        for(ContentSelector selector: metaData.getContentSelectorList()){
+                stringyMetaData.put(MetaData.SELECTOR_META_PREFIX + selector.getFieldName(), selector.getValues());
+
+        }
 
         Map<String, String> serializedMetaData = serializeMetaData(stringyMetaData);
 
@@ -96,7 +102,7 @@ public class MetaDataSerializer {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(OS.NEWLINE);
 
-        for (String groupNode : root.getTreeAsString()) {
+        for (String groupNode : new GroupSerializer().serializeTree(root)) {
             stringBuilder.append(StringUtil.quote(groupNode, MetaData.SEPARATOR_STRING, MetaData.ESCAPE_CHARACTER));
             stringBuilder.append(MetaData.SEPARATOR_STRING);
             stringBuilder.append(OS.NEWLINE);

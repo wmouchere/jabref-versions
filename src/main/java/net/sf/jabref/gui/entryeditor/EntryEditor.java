@@ -33,6 +33,7 @@ import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -56,6 +57,7 @@ import net.sf.jabref.gui.IconTheme;
 import net.sf.jabref.gui.JabRefFrame;
 import net.sf.jabref.gui.OSXCompatibleToolbar;
 import net.sf.jabref.gui.actions.Actions;
+import net.sf.jabref.gui.contentselector.FieldContentSelector;
 import net.sf.jabref.gui.externalfiles.WriteXMPEntryEditorAction;
 import net.sf.jabref.gui.fieldeditors.FieldEditor;
 import net.sf.jabref.gui.fieldeditors.FieldEditorFocusListener;
@@ -63,8 +65,10 @@ import net.sf.jabref.gui.fieldeditors.FileListEditor;
 import net.sf.jabref.gui.fieldeditors.JTextAreaWithHighlighting;
 import net.sf.jabref.gui.fieldeditors.TextField;
 import net.sf.jabref.gui.help.HelpAction;
+import net.sf.jabref.gui.importer.fetcher.EntryFetchers;
 import net.sf.jabref.gui.keyboard.KeyBinding;
 import net.sf.jabref.gui.menus.ChangeEntryTypeMenu;
+import net.sf.jabref.gui.mergeentries.EntryFetchAndMergeWorker;
 import net.sf.jabref.gui.specialfields.SpecialFieldUpdateListener;
 import net.sf.jabref.gui.undo.NamedCompound;
 import net.sf.jabref.gui.undo.UndoableChangeType;
@@ -79,6 +83,7 @@ import net.sf.jabref.logic.bibtex.BibEntryWriter;
 import net.sf.jabref.logic.bibtex.LatexFieldFormatter;
 import net.sf.jabref.logic.bibtexkeypattern.BibtexKeyPatternUtil;
 import net.sf.jabref.logic.help.HelpFile;
+import net.sf.jabref.logic.importer.EntryBasedFetcher;
 import net.sf.jabref.logic.importer.ParserResult;
 import net.sf.jabref.logic.importer.fileformat.BibtexParser;
 import net.sf.jabref.logic.l10n.Localization;
@@ -116,7 +121,7 @@ public class EntryEditor extends JPanel implements EntryContainer {
     private static final Log LOGGER = LogFactory.getLog(EntryEditor.class);
 
     /** A reference to the entry this object works on. */
-    private BibEntry entry;
+    private final BibEntry entry;
     /** The currently displayed type */
     private final String displayedBibEntryType;
 
@@ -158,6 +163,7 @@ public class EntryEditor extends JPanel implements EntryContainer {
     private final JabRefFrame frame;
 
     private final BasePanel panel;
+    private final Set<FieldContentSelector> contentSelectors = new HashSet<>();
 
     /**
      * This can be set to false to stop the source text area from getting updated. This is used in cases where the
@@ -439,6 +445,27 @@ public class EntryEditor extends JPanel implements EntryContainer {
 
         toolBar.add(writeXmp);
 
+        JPopupMenu fetcherPopup = new JPopupMenu();
+        for(EntryBasedFetcher fetcher : EntryFetchers.getEntryBasedFetchers()) {
+            fetcherPopup.add(new JMenuItem(new AbstractAction(fetcher.getName()) {
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    new EntryFetchAndMergeWorker(panel, getEntry(), fetcher).execute();
+                }
+            }));
+        }
+        JButton fetcherButton = new JButton(IconTheme.JabRefIcon.REFRESH.getIcon());
+        fetcherButton.setToolTipText(Localization.lang("Update with bibliographic information from the web"));
+        fetcherButton.addMouseListener(new MouseAdapter() {
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                fetcherPopup.show(e.getComponent(), e.getX(), e.getY());
+            }
+        });
+        toolBar.add(fetcherButton);
+
         toolBar.addSeparator();
 
         toolBar.add(deleteAction);
@@ -457,6 +484,22 @@ public class EntryEditor extends JPanel implements EntryContainer {
 
         leftPan.add(toolBar, BorderLayout.SOUTH);
         add(leftPan, BorderLayout.WEST);
+    }
+
+    /**
+     * Rebuild the field tabs. This is called e.g. when a new content selector
+     * has been added.
+     */
+    public void rebuildPanels() {
+        // Remove change listener, because the rebuilding causes meaningless
+        // events and trouble:
+        tabbed.removeChangeListener(tabListener);
+
+        setupFieldPanels();
+        // Add the change listener again:
+        tabbed.addChangeListener(tabListener);
+        revalidate();
+        repaint();
     }
 
     /**
@@ -484,7 +527,12 @@ public class EntryEditor extends JPanel implements EntryContainer {
         } else if (fieldExtras.contains(FieldProperty.JOURNAL_NAME)) {
             // Add controls for switching between abbreviated and full journal names.
             // If this field also has a FieldContentSelector, we need to combine these.
-            return FieldExtraComponents.getJournalExtraComponent(panel, editor, entry, getStoreFieldAction());
+            return FieldExtraComponents.getJournalExtraComponent(frame, panel, editor, entry, contentSelectors,
+                    getStoreFieldAction());
+        } else if (!panel.getBibDatabaseContext().getMetaData().getContentSelectorValuesForField(fieldName).isEmpty()) {
+            return FieldExtraComponents.getSelectorExtraComponent(frame, panel, editor, contentSelectors,
+                    getStoreFieldAction());
+
         } else if (fieldExtras.contains(FieldProperty.DOI)) {
             return FieldExtraComponents.getDoiExtraComponent(panel, this, editor);
         } else if (fieldExtras.contains(FieldProperty.EPRINT)) {
@@ -834,6 +882,14 @@ public class EntryEditor extends JPanel implements EntryContainer {
         }
     }
 
+    public void updateAllContentSelectors() {
+        if (!contentSelectors.isEmpty()) {
+            for (FieldContentSelector contentSelector : contentSelectors) {
+                contentSelector.rebuildComboBox();
+            }
+        }
+    }
+
     /**
      * Update the JTextArea when a field has changed.
      */
@@ -900,11 +956,13 @@ public class EntryEditor extends JPanel implements EntryContainer {
                     }
                 }
 
+
                 private void handleTypeChange() {
                     showChangeEntryTypePopupMenu();
                 }
             });
         }
+
 
         @Override
         public void paintComponent(Graphics g) {
@@ -1256,7 +1314,7 @@ public class EntryEditor extends JPanel implements EntryContainer {
                 }
             }
 
-            BibtexKeyPatternUtil.makeLabel(panel.getBibDatabaseContext().getMetaData()
+            BibtexKeyPatternUtil.makeAndSetLabel(panel.getBibDatabaseContext().getMetaData()
                     .getCiteKeyPattern(Globals.prefs.getBibtexKeyPatternPreferences().getKeyPattern()), panel.getDatabase(), entry,
                     Globals.prefs.getBibtexKeyPatternPreferences());
 
