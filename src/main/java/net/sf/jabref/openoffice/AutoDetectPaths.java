@@ -20,7 +20,6 @@ import net.sf.jabref.gui.worker.AbstractWorker;
 
 import javax.swing.*;
 import java.io.File;
-import java.io.FileFilter;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -178,11 +177,13 @@ public class AutoDetectPaths extends AbstractWorker {
         else if (OS.OS_X) {
             File rootDir = new File("/Applications");
             File[] files = rootDir.listFiles();
-            for (File file : files) {
-                if (file.isDirectory() && "OpenOffice.org.app".equals(file.getName())) {
-                    rootDir = file;
-                    //System.out.println("Setting starting dir to: "+file.getPath());
-                    break;
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory() && "OpenOffice.org.app".equals(file.getName())) {
+                        rootDir = file;
+                        //System.out.println("Setting starting dir to: "+file.getPath());
+                        break;
+                    }
                 }
             }
             //System.out.println("Searching for soffice.bin");
@@ -329,14 +330,10 @@ public class AutoDetectPaths extends AbstractWorker {
 
         for (String rootPath : sourceList) {
             File root = new File(rootPath);
-            File[] dirs = root.listFiles(new FileFilter() {
-
-                @Override
-                public boolean accept(File file) {
-                    return file.isDirectory();
-                }
-            });
-            Collections.addAll(dirList, dirs);
+            File[] dirs = root.listFiles(File::isDirectory);
+            if (dirs != null) {
+                Collections.addAll(dirList, dirs);
+            }
         }
         return dirList;
     }

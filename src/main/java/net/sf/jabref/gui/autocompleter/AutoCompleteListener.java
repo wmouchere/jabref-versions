@@ -23,6 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.awt.event.*;
+import java.util.List;
 
 /**
  * Created by Morten O. Alver, 16 Feb. 2007
@@ -32,7 +33,7 @@ public class AutoCompleteListener extends KeyAdapter implements FocusListener {
     //TODO: The logging behavior in this class is probably too fine-grained and only understandable to its original author
     private static final Log LOGGER = LogFactory.getLog(AutoCompleteListener.class);
 
-	private final AutoCompleter<String> completer;
+    private final AutoCompleter<String> completer;
 
     // These variables keep track of the situation from time to time.
     private String toSetIn; // null indicates that there are no completions available
@@ -410,7 +411,8 @@ public class AutoCompleteListener extends KeyAdapter implements FocusListener {
     }
 
     private String[] findCompletions(String beginning) {
-        return completer.complete(beginning);
+        List<String> results = completer.complete(beginning);
+        return results.toArray(new String[results.size()]);
     }
 
     private StringBuffer getCurrentWord(JTextComponent comp) {

@@ -16,13 +16,8 @@
 package net.sf.jabref.logic.util.strings;
 
 import net.sf.jabref.Globals;
-import net.sf.jabref.logic.l10n.Encodings;
-
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,7 +37,7 @@ public class StringUtil {
      */
 
     public static String shaveString(String toShave) {
-        if ((toShave == null) || (toShave.length() == 0)) {
+        if ((toShave == null) || (toShave.isEmpty())) {
             return toShave;
         }
         toShave = toShave.trim();
@@ -179,7 +174,7 @@ public class StringUtil {
         addWrappedLine(result, CharMatcher.WHITESPACE.trimTrailingFrom(lines[0]), wrapAmount); // See
         for (int i = 1; i < lines.length; i++) {
 
-            if (!"".equals(lines[i].trim())) {
+            if (!(lines[i].trim().isEmpty())) {
                 result.append(Globals.NEWLINE);
                 result.append('\t');
                 result.append(Globals.NEWLINE);
@@ -284,26 +279,6 @@ public class StringUtil {
 
     public static String booleanToBinaryString(boolean expression) {
         return expression ? "1" : "0";
-    }
-
-    /**
-     * Make a list of supported character encodings that can encode all
-     * characters in the given String.
-     *
-     * @param characters
-     *            A String of characters that should be supported by the
-     *            encodings.
-     * @return A List of character encodings
-     */
-    public static List<String> findEncodingsForString(String characters) {
-        List<String> encodings = new ArrayList<>();
-        for (int i = 0; i < Encodings.ENCODINGS.length; i++) {
-            CharsetEncoder encoder = Charset.forName(Encodings.ENCODINGS[i]).newEncoder();
-            if (encoder.canEncode(characters)) {
-                encodings.add(Encodings.ENCODINGS[i]);
-            }
-        }
-        return encodings;
     }
 
     /**
@@ -461,7 +436,7 @@ public class StringUtil {
         return buf.toString();
 
         /*
-         * if (s.length() == 0) return s; // Protect against ArrayIndexOutOf....
+         * if (s.isEmpty()) return s; // Protect against ArrayIndexOutOf....
          * StringBuffer buf = new StringBuffer();
          *
          * Matcher mcr = titleCapitalPattern.matcher(s.substring(1)); while

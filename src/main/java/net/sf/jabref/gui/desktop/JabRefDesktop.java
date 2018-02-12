@@ -8,10 +8,11 @@ import net.sf.jabref.gui.*;
 import net.sf.jabref.gui.undo.UndoableFieldChange;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.logic.net.URLDownload;
+import net.sf.jabref.logic.util.DOI;
 import net.sf.jabref.logic.util.OS;
 import net.sf.jabref.logic.util.io.FileUtil;
 import net.sf.jabref.logic.util.io.URLUtil;
-import net.sf.jabref.model.entry.BibtexEntry;
+import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.util.Util;
 
 import javax.swing.*;
@@ -23,6 +24,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * TODO: Replace by http://docs.oracle.com/javase/7/docs/api/java/awt/Desktop.html
@@ -53,20 +55,19 @@ public class JabRefDesktop {
             if (split.length >= 2) {
                 if ("pdf".equalsIgnoreCase(split[split.length - 1])) {
                     fieldName = "pdf";
-                    // @formatter:off
                 } else if ("ps".equalsIgnoreCase(split[split.length - 1])
                         || ((split.length >= 3) && "ps".equalsIgnoreCase(split[split.length - 2]))) {
-                    // @formatter:on
                     fieldName = "ps";
                 }
             }
 
         } else if ("doi".equals(fieldName)) {
+            Optional<DOI> doiUrl = DOI.build(link);
+            if(doiUrl.isPresent()) {
+                link = doiUrl.get().getURLAsASCIIString();
+            }
+            // should be opened in browser
             fieldName = "url";
-
-            // sanitizing is done below at the treatment of "URL"
-            // in sanitizeUrl a doi-link is correctly treated
-
         } else if ("eprint".equals(fieldName)) {
             fieldName = "url";
 
@@ -245,11 +246,9 @@ public class JabRefDesktop {
         //  * a the solution combining http://stackoverflow.com/a/5226244/873282 and http://stackoverflow.com/a/28807079/873282
         if (OS.OS_X) {
             // Use "-a <application>" if the app is specified, and just "open <filename>" otherwise:
-            // @formatter:off
             String[] cmd = (fileType.getOpenWith() != null) && !fileType.getOpenWith().isEmpty() ?
                     new String[] {"/usr/bin/open", "-a", fileType.getOpenWith(), filePath} :
                     new String[] {"/usr/bin/open", filePath};
-            // @formatter:on
             Runtime.getRuntime().exec(cmd);
         } else if (OS.WINDOWS) {
             if ((fileType.getOpenWith() != null) && !fileType.getOpenWith().isEmpty()) {
@@ -302,15 +301,13 @@ public class JabRefDesktop {
         });
     }
 
-    public static boolean openExternalFileUnknown(JabRefFrame frame, BibtexEntry entry, MetaData metaData,
+    public static boolean openExternalFileUnknown(JabRefFrame frame, BibEntry entry, MetaData metaData,
             String link, UnknownExternalFileType fileType) throws IOException {
 
         String cancelMessage = Localization.lang("Unable to open file.");
-        // @formatter:off
         String[] options = new String[] {Localization.lang("Define '%0'", fileType.getName()),
                 Localization.lang("Change file type"),
                 Localization.lang("Cancel")};
-        // @formatter:on
         String defOption = options[0];
         int answer = JOptionPane.showOptionDialog(frame, Localization.lang("This external link is of the type '%0', which is undefined. What do you want to do?",
                         fileType.getName()),

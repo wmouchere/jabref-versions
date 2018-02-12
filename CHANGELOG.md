@@ -10,6 +10,57 @@ We refer to [GitHub issues](https://github.com/JabRef/jabref/issues) by using `#
 to [sourceforge bugs](https://sourceforge.net/p/jabref/bugs/) by using `bug NUM`, and
 to [sourceforge feature requests](https://sourceforge.net/p/jabref/features/) by using `feature NUM`.
 
+## [3.1] - 2015-12-24
+
+### Changed
+- Added new DoiResolution fetcher that tries to download full text PDF from DOI link
+- Add options to close other/all databases in tab right-click menu
+- Implements #470: Show editor (as an alternative to author) and booktitle (as an alternative to journal) in the main table by default
+- Restore focus to last focused tab on start
+- Add ability to format/cleanup the date field
+- Add support for proxy authentication via VM args and GUI settings, this implements Feature Request #388
+- Move Bibtex and Biblatex mode switcher to File menu
+- Display active edit mode (BibTeX or Biblatex) at window title
+- Implements #444: The search is cleared by either clicking the clear-button or by pressing ESC with having focus in the search field. 
+- Icons are shown as Header for icon columns in the entry table (#315)
+- Tooltips are shown for header columns and contents which are too wide to be displayed in the entry table (#384)
+- Default order in entry table:  # | all file based icons (file, URL/DOI, ...) | all bibtex field based icons (bibtexkey, entrytype, author, title, ...) | all activated special field icons (ranking, quality, ...)
+- Write all field keys in lower case. No more camel casing of field names. E.g., `title` is written instead of `Title`, `howpublished` instead of `HowPublished`, and `doi` instead of `DOI`. The configuration option `Use camel case for field names (e.g., "HowPublished" instead of "howpublished")` is gone.
+- All field saving options are removed. There is no more customization of field sorting. '=' is now appended to the field key instead of its value. The intendation is aligned for an entry and not for the entire database. Entry names are written in title case format.
+- Entries are only reformatted if they were changed during a session. There is no more mandatory reformatting of the entire database on save.
+- Implements #565: Highlighting matches works now also for regular expressions in preview panel and entry editor
+- IEEEXplore search now downloads the full Bibtex record instead of parsing the fields from the HTML webpage result (fixes [bug 1146](https://sourceforge.net/p/jabref/bugs/1146/) and [bug 1267](https://sourceforge.net/p/jabref/bugs/1267/))
+- Christmas color theme (red and green)
+
+### Fixed
+- Fixed [bug 482](https://sourceforge.net/p/jabref/bugs/482/) partly: escaped brackets are now parsed properly when opening a bib file
+- Fixed #479: Import works again
+- Fixed #434: Revert to old 'JabRef' installation folder name instead of 'jabref'
+- Fixed #435: Retrieve non open access ScienceDirect PDFs via HTTP DOM
+- Fixed: Cleanup process aborts if linked file does not exists
+- Fixed #420: Reenable preference changes
+- Fixed #414: Rework BibLatex entry types with correct required and optional fields
+- Fixed #413: Help links in released jar version are not working
+- Fixes #412: Biblatex preserves capital letters, checking whether letters may be converted to lowercase within the Integrity Check action is obsolete.
+- Fixed #437: The toolbar after the search field is now correctly wrapped when using a small window size for JabRef
+- Fixed #438: Cut, Copy and Paste are now translated correctly in the menu
+- Fixed #443/#445: Fixed sorting and moving special field columns
+- Fixed #498: non-working legacy PDF/PS column removed
+- Fixed #473: Import/export to external database works again
+- Fixed #526: OpenOffice/LibreOffice connection works again on Linux/OSX
+- Fixed #533: Preview parsed incorrectly when regular expression was enabled
+- Fixed #564: Cite command changes are immediately reflected in the push-to-application actions, and not only after restart
+
+### Removed
+- Removed BioMail format importer
+- Removed file history size preference (never available from the UI)
+- Removed jstorImporter because it's hardly ever used, even Jstor.org doesn't support/export said format anymore
+- Removed ScifinderImporter because it's hardly ever used, and we could not get resource files to test against
+- Removed option "Show one letter heading for icon columns" which is obsolete with the fix of #315/384
+- Removed table column "PDF/PS" which refers to legacy fields "ps" resp. "pdf" which are no longer supported (see also fix #498)
+- Removed the ability to export references on the CLI interface based on year ranges
+
+
 ## [3.0] - 2015-11-29
 
 ### Changed
@@ -136,8 +187,9 @@ Since much functionality has changed during development, a release of this versi
 
 ## 2.11 - 2015-11-11
 
-The changelog of 2.11 and versions before is maintained as text file in the [dev_2.11 branch](https://github.com/JabRef/jabref/tree/dev_2.11).
+The changelog of 2.11 and versions before is maintained as [text file](https://github.com/JabRef/jabref/blob/dev_2.11/CHANGELOG) in the [dev_2.11 branch](https://github.com/JabRef/jabref/tree/dev_2.11).
 
-[3.0]: https://github.com/JabRef/jabref/compare/v3.0...HEAD
+[3.1]: https://github.com/JabRef/jabref/compare/v3.0...v3.1
+[3.0]: https://github.com/JabRef/jabref/compare/v2.11.1...v3.0
 [dev_2.11]: https://github.com/JabRef/jabref/compare/v2.11.1...dev_2.11
 [2.11.1]: https://github.com/JabRef/jabref/compare/v2.11...v2.11.1

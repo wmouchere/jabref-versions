@@ -27,8 +27,8 @@ import com.jgoodies.forms.layout.FormLayout;
 import net.sf.jabref.gui.BasePanel;
 import net.sf.jabref.gui.actions.BrowseAction;
 import net.sf.jabref.logic.l10n.Localization;
-import net.sf.jabref.model.database.BibtexDatabase;
-import net.sf.jabref.model.entry.BibtexEntry;
+import net.sf.jabref.model.database.BibDatabase;
+import net.sf.jabref.model.entry.BibEntry;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -47,7 +47,6 @@ public abstract class AbstractPushToApplication implements PushToApplication {
     protected final JTextField Path = new JTextField(30);
     protected String commandPath;
     protected String commandPathPreferenceKey;
-    protected String citeCommand = Globals.prefs.get(JabRefPreferences.CITE_COMMAND);
     protected FormBuilder builder;
 
 
@@ -62,7 +61,7 @@ public abstract class AbstractPushToApplication implements PushToApplication {
     }
 
     @Override
-    public void pushEntries(BibtexDatabase database, BibtexEntry[] entries, String keyString, MetaData metaData) {
+    public void pushEntries(BibDatabase database, BibEntry[] entries, String keyString, MetaData metaData) {
 
         couldNotConnect = false;
         couldNotCall = false;
@@ -93,10 +92,8 @@ public abstract class AbstractPushToApplication implements PushToApplication {
     @Override
     public void operationCompleted(BasePanel panel) {
         if (notDefined) {
-            // @formatter:off
             panel.output(Localization.lang("Error") + ": "
                     + Localization.lang("Path to %0 not defined", getApplicationName()) + ".");
-            // @formatter:on
         } else if (couldNotCall) {
             panel.output(Localization.lang("Error") + ": "
                     + Localization.lang("Could not call executable") + " '" + commandPath + "'.");
@@ -176,4 +173,7 @@ public abstract class AbstractPushToApplication implements PushToApplication {
         Globals.prefs.put(commandPathPreferenceKey, Path.getText());
     }
 
+    protected String getCiteCommand() {
+        return Globals.prefs.get(JabRefPreferences.CITE_COMMAND);
+    }
 }

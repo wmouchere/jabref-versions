@@ -31,17 +31,17 @@ import net.sf.jabref.logic.formatter.CaseChangers;
 import net.sf.jabref.bibtex.EntryTypes;
 import net.sf.jabref.model.entry.MonthUtil;
 import net.sf.jabref.logic.util.strings.StringUtil;
-import net.sf.jabref.model.entry.BibtexEntry;
+import net.sf.jabref.model.entry.BibEntry;
 
 /**
  * Importer for the ISI Web of Science, INSPEC and Medline format.
- *
+ * <p>
  * Documentation about ISI WOS format:
- *
+ * <p>
  * <ul>
  * <li>http://wos.isitrial.com/help/helpprn.html</li>
  * </ul>
- *
+ * <p>
  * <ul>
  * <li>Check compatibility with other ISI2Bib tools like:
  * http://www-lab.imr.tohoku.ac.jp/~t-nissie/computer/software/isi/ or
@@ -158,16 +158,16 @@ public class IsiImporter extends ImportFormat {
     }
 
     /**
-     * Parse the entries in the source, and return a List of BibtexEntry
+     * Parse the entries in the source, and return a List of BibEntry
      * objects.
      */
     @Override
-    public List<BibtexEntry> importEntries(InputStream stream, OutputPrinter status) throws IOException {
+    public List<BibEntry> importEntries(InputStream stream, OutputPrinter status) throws IOException {
         if (stream == null) {
             throw new IOException("No stream given.");
         }
 
-        ArrayList<BibtexEntry> bibitems = new ArrayList<>();
+        ArrayList<BibEntry> bibitems = new ArrayList<>();
         StringBuilder sb = new StringBuilder();
 
         BufferedReader in = new BufferedReader(ImportFormatReader.getReaderDefaultEncoding(stream));
@@ -321,7 +321,7 @@ public class IsiImporter extends ImportFormat {
                             || "FN".equals(beg)) {
                         continue;
                     }
-                    hm.put(beg, value);
+                    hm.put(beg.toLowerCase(), value);
                 }
             }
 
@@ -334,8 +334,8 @@ public class IsiImporter extends ImportFormat {
                 continue;
             }
 
-            BibtexEntry b = new BibtexEntry(DEFAULT_BIBTEXENTRY_ID, EntryTypes
-                    .getBibtexEntryType(Type));
+            BibEntry b = new BibEntry(DEFAULT_BIBTEXENTRY_ID, EntryTypes
+                    .getTypeOrDefault(Type));
             // id assumes an existing database so don't
 
             // Remove empty fields:
@@ -395,10 +395,9 @@ public class IsiImporter extends ImportFormat {
 
     /**
      * Will expand ISI first names.
-     *
+     * <p>
      * Fixed bug from:
      * http://sourceforge.net/tracker/index.php?func=detail&aid=1542552&group_id=92314&atid=600306
-     *
      */
     public static String isiAuthorConvert(String author) {
 

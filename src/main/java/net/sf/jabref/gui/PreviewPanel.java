@@ -27,6 +27,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.PrintRequestAttributeSet;
@@ -40,32 +41,32 @@ import net.sf.jabref.exporter.layout.Layout;
 import net.sf.jabref.exporter.layout.LayoutHelper;
 import net.sf.jabref.exporter.ExportFormats;
 import net.sf.jabref.gui.fieldeditors.PreviewPanelTransferHandler;
-import net.sf.jabref.logic.search.SearchTextListener;
-import net.sf.jabref.gui.keyboard.KeyBinds;
+import net.sf.jabref.gui.keyboard.KeyBinding;
+import net.sf.jabref.logic.search.SearchQueryHighlightListener;
 import net.sf.jabref.logic.l10n.Localization;
-import net.sf.jabref.model.database.BibtexDatabase;
-import net.sf.jabref.model.entry.BibtexEntry;
+import net.sf.jabref.model.database.BibDatabase;
+import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.gui.desktop.JabRefDesktop;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * Displays an BibtexEntry using the given layout format.
+ * Displays an BibEntry using the given layout format.
  */
-public class PreviewPanel extends JPanel implements VetoableChangeListener, SearchTextListener, EntryContainer {
+public class PreviewPanel extends JPanel implements VetoableChangeListener, SearchQueryHighlightListener, EntryContainer {
 
     private static final Log LOGGER = LogFactory.getLog(PreviewPanel.class);
 
     /**
      * The bibtex entry currently shown
      */
-    private Optional<BibtexEntry> entry = Optional.empty();
+    private Optional<BibEntry> entry = Optional.empty();
 
     /**
      * If a database is set, the preview will attempt to resolve strings in the
      * previewed entry using that database.
      */
-    private Optional<BibtexDatabase> database = Optional.empty();
+    private Optional<BibDatabase> database = Optional.empty();
 
     private Optional<Layout> layout = Optional.empty();
 
@@ -82,7 +83,7 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
     private final Optional<PdfPreviewPanel> pdfPreviewPanel;
     private final Optional<BasePanel> panel;
 
-    private final JEditorPane previewPane;
+    private JEditorPane previewPane;
 
     private final JScrollPane scrollPane;
 
@@ -90,7 +91,7 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
 
     private final CloseAction closeAction;
 
-    private final List<String> wordsToHighlight = new LinkedList<>();
+    private Optional<Pattern> highlightPattern = Optional.empty();
 
     /**
      * @param database
@@ -106,7 +107,7 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
      * @param layoutFile
      *            (must be given) Used for layout
      */
-    public PreviewPanel(BibtexDatabase database, BibtexEntry entry,
+    public PreviewPanel(BibDatabase database, BibEntry entry,
             BasePanel panel, MetaData metaData, String layoutFile) {
         this(database, entry, panel, metaData, layoutFile, false);
     }
@@ -127,7 +128,7 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
      *            (must be given) Used for layout
      * @param withPDFPreview if true, a PDF preview is included in the PreviewPanel
      */
-    public PreviewPanel(BibtexDatabase database, BibtexEntry entry,
+    public PreviewPanel(BibDatabase database, BibEntry entry,
             BasePanel panel, MetaData metaData, String layoutFile, boolean withPDFPreview) {
         this(panel, metaData, layoutFile, withPDFPreview);
         this.database = Optional.ofNullable(database);
@@ -174,7 +175,7 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
 
         this.panel = Optional.ofNullable(panel);
 
-        this.previewPane = createPreviewPane();
+        createPreviewPane();
         if (withPDFPreview) {
             this.pdfPreviewPanel = Optional.of(new PdfPreviewPanel(metaData));
         } else {
@@ -236,10 +237,10 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
         ActionMap actionMap = toolBar.getActionMap();
         InputMap inputMap = toolBar.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
 
-        inputMap.put(Globals.prefs.getKey(KeyBinds.CLOSE_DIALOG), "close");
+        inputMap.put(Globals.getKeyPrefs().getKey(KeyBinding.CLOSE_DIALOG), "close");
         actionMap.put("close", this.closeAction);
 
-        inputMap.put(Globals.prefs.getKey(KeyBinds.PRINT_ENTRY_PREVIEW), "print");
+        inputMap.put(Globals.getKeyPrefs().getKey(KeyBinding.PRINT_ENTRY_PREVIEW), "print");
         actionMap.put("print", this.printAction);
 
         toolBar.setFloatable(false);
@@ -258,8 +259,8 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
         return toolBar;
     }
 
-    private JEditorPane createPreviewPane() {
-        JEditorPane previewPane = new JEditorPane() {
+    private void createPreviewPane() {
+        previewPane = new JEditorPane() {
             @Override
             public Dimension getPreferredScrollableViewportSize() {
                 return getPreferredSize();
@@ -289,7 +290,6 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
             }
         });
 
-        return previewPane;
     }
 
     public void setMetaData(MetaData metaData) {
@@ -315,8 +315,8 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
         this.layout = Optional.of(layout);
     }
 
-    public void setEntry(BibtexEntry newEntry) {
-        if(entry.isPresent() && entry.get() != newEntry) {
+    public void setEntry(BibEntry newEntry) {
+        if(entry.isPresent() && (entry.get() != newEntry)) {
             entry.ifPresent(e -> e.removePropertyChangeListener(this));
             newEntry.addPropertyChangeListener(this);
         }
@@ -327,7 +327,7 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
     }
 
     @Override
-    public BibtexEntry getEntry() {
+    public BibEntry getEntry() {
         return this.entry.orElse(null);
     }
 
@@ -336,7 +336,7 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
         ExportFormats.entryNumber = 1; // Set entry number in case that is included in the preview layout.
         entry.ifPresent(entry ->
                 layout.ifPresent(layout ->
-                        sb.append(layout.doLayout(entry, database.orElse(null), wordsToHighlight))
+                        sb.append(layout.doLayout(entry, database.orElse(null), highlightPattern))
                 )
         );
         String newValue = sb.toString();
@@ -345,16 +345,19 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
         previewPane.revalidate();
 
         // Scroll to top:
-        final JScrollBar bar = scrollPane.getVerticalScrollBar();
-        SwingUtilities.invokeLater(() -> bar.setValue(0));
+        scrollToTop();
 
         // update pdf preview
         pdfPreviewPanel.ifPresent(p -> p.updatePanel(entry.orElse(null)));
     }
 
+    private void scrollToTop() {
+        SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
+    }
+
     /**
      * The PreviewPanel has registered itself as an event listener with the
-     * currently displayed BibtexEntry. If the entry changes, an event is
+     * currently displayed BibEntry. If the entry changes, an event is
      * received here, and we can update the preview immediately.
      */
     @Override
@@ -366,9 +369,8 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
     }
 
     @Override
-    public void searchText(List<String> words) {
-        this.wordsToHighlight.clear();
-        this.wordsToHighlight.addAll(words);
+    public void highlightPattern(Optional<Pattern> highlightPattern) {
+        this.highlightPattern = highlightPattern;
         update();
     }
 
@@ -377,7 +379,7 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
             super(Localization.lang("Print entry preview"), IconTheme.JabRefIcon.PRINTED.getIcon());
 
             putValue(Action.SHORT_DESCRIPTION, Localization.lang("Print entry preview"));
-            putValue(Action.ACCELERATOR_KEY, JabRefPreferences.getInstance().getKey(KeyBinds.PRINT_ENTRY_PREVIEW));
+            putValue(Action.ACCELERATOR_KEY, Globals.getKeyPrefs().getKey(KeyBinding.PRINT_ENTRY_PREVIEW));
         }
 
 
@@ -391,7 +393,7 @@ public class PreviewPanel extends JPanel implements VetoableChangeListener, Sear
                 public void run() {
                     try {
                         PrintRequestAttributeSet pras = new HashPrintRequestAttributeSet();
-                        pras.add(new JobName(entry.map(BibtexEntry::getCiteKey).orElse("NO ENTRY"), null));
+                        pras.add(new JobName(entry.map(BibEntry::getCiteKey).orElse("NO ENTRY"), null));
                         previewPane.print(null, null, true, null, pras, false);
 
                     } catch (PrinterException e) {

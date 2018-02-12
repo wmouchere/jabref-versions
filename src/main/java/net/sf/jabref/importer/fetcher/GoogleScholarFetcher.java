@@ -22,7 +22,7 @@ import net.sf.jabref.importer.OutputPrinter;
 import net.sf.jabref.importer.ParserResult;
 import net.sf.jabref.logic.l10n.Localization;
 import net.sf.jabref.logic.net.URLDownload;
-import net.sf.jabref.model.entry.BibtexEntry;
+import net.sf.jabref.model.entry.BibEntry;
 
 import javax.swing.*;
 
@@ -33,9 +33,11 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class GoogleScholarFetcher implements PreviewEntryFetcher {
 
@@ -122,7 +124,7 @@ public class GoogleScholarFetcher implements PreviewEntryFetcher {
             if (isSelected) {
                 downloaded++;
                 try {
-                    BibtexEntry entry = downloadEntry(selEntry.getKey());
+                    BibEntry entry = downloadEntry(selEntry.getKey());
                     inspector.addEntry(entry);
                 } catch (IOException e) {
                     LOGGER.warn("Cannot download entry from Google scholar", e);
@@ -171,17 +173,10 @@ public class GoogleScholarFetcher implements PreviewEntryFetcher {
             formItems.put("scis", "yes");
             formItems.put("scisf", "4");
             formItems.put("num", String.valueOf(GoogleScholarFetcher.MAX_ENTRIES_TO_LOAD));
-            StringBuilder ub = new StringBuilder(GoogleScholarFetcher.URL_SETPREFS + "?");
-            for (Iterator<String> i = formItems.keySet().iterator(); i.hasNext();) {
-                String name = i.next();
-                ub.append(name).append("=").append(formItems.get(name));
-                if (i.hasNext()) {
-                    ub.append("&");
-                }
-            }
-            ub.append("&submit=");
+            String request = formItems.entrySet().stream().map(Object::toString)
+                    .collect(Collectors.joining("&", GoogleScholarFetcher.URL_SETPREFS + "?", "&submit="));
             // Download the URL to set preferences:
-            new URLDownload(new URL(ub.toString())).downloadToString();
+            new URLDownload(new URL(request)).downloadToString();
 
         } catch (UnsupportedEncodingException ex) {
             LOGGER.error("Unsupported encoding.", ex);
@@ -197,7 +192,8 @@ public class GoogleScholarFetcher implements PreviewEntryFetcher {
         String urlQuery;
         LinkedHashMap<String, JLabel> res = new LinkedHashMap<>();
         try {
-            urlQuery = GoogleScholarFetcher.SEARCH_URL.replace(GoogleScholarFetcher.QUERY_MARKER, URLEncoder.encode(query, "UTF-8"));
+            urlQuery = GoogleScholarFetcher.SEARCH_URL.replace(GoogleScholarFetcher.QUERY_MARKER,
+                    URLEncoder.encode(query, StandardCharsets.UTF_8.name()));
             int count = 1;
             String nextPage;
             while (((nextPage = getCitationsFromUrl(urlQuery, res)) != null)
@@ -264,20 +260,17 @@ public class GoogleScholarFetcher implements PreviewEntryFetcher {
         return null;
     }
 
-    private BibtexEntry downloadEntry(String link) throws IOException {
+    private BibEntry downloadEntry(String link) throws IOException {
         try {
             URL url = new URL(GoogleScholarFetcher.URL_START + link);
             String s = new URLDownload(url).downloadToString();
             BibtexParser bp = new BibtexParser(new StringReader(s));
             ParserResult pr = bp.parse();
             if ((pr != null) && (pr.getDatabase() != null)) {
-                Collection<BibtexEntry> entries = pr.getDatabase().getEntries();
+                Collection<BibEntry> entries = pr.getDatabase().getEntries();
                 if (entries.size() == 1) {
-                    BibtexEntry entry = entries.iterator().next();
-                    boolean clearKeys = true;
-                    if (clearKeys) {
-                        entry.setField(BibtexEntry.KEY_FIELD, null);
-                    }
+                    BibEntry entry = entries.iterator().next();
+                    entry.clearField(BibEntry.KEY_FIELD);
                     // If the entry's url field is not set, and we have stored an url for this
                     // entry, set it:
                     if (entry.getField("url") == null) {

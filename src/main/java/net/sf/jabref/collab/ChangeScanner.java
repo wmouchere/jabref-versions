@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Optional;
 import java.util.Vector;
 import java.util.ArrayList;
 
@@ -43,8 +44,8 @@ import net.sf.jabref.bibtex.DuplicateCheck;
 import net.sf.jabref.model.database.EntrySorter;
 import net.sf.jabref.bibtex.comparator.EntryComparator;
 import net.sf.jabref.logic.l10n.Localization;
-import net.sf.jabref.model.database.BibtexDatabase;
-import net.sf.jabref.model.entry.BibtexEntry;
+import net.sf.jabref.model.database.BibDatabase;
+import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.model.entry.BibtexString;
 
 public class ChangeScanner implements Runnable {
@@ -53,12 +54,12 @@ public class ChangeScanner implements Runnable {
 
     private final File f;
 
-    private final BibtexDatabase inMem;
+    private final BibDatabase inMem;
     private final MetaData mdInMem;
     private final BasePanel panel;
     private final JabRefFrame frame;
 
-    private BibtexDatabase inTemp;
+    private BibDatabase inTemp;
     private MetaData mdInTemp;
 
     private static final Log LOGGER = LogFactory.getLog(ChangeScanner.class);
@@ -75,7 +76,7 @@ public class ChangeScanner implements Runnable {
 
     //  NamedCompound edit = new NamedCompound("Merged external changes")
 
-    public ChangeScanner(JabRefFrame frame, BasePanel bp, File file) { //, BibtexDatabase inMem, MetaData mdInMem) {
+    public ChangeScanner(JabRefFrame frame, BasePanel bp, File file) { //, BibDatabase inMem, MetaData mdInMem) {
         this.panel = bp;
         this.frame = frame;
         this.inMem = bp.database();
@@ -90,13 +91,12 @@ public class ChangeScanner implements Runnable {
 
             // Parse the temporary file.
             File tempFile = Globals.fileUpdateMonitor.getTempFile(panel.fileMonitorHandle());
-            ParserResult pr = OpenDatabaseAction.loadDatabase(tempFile,
-                    Globals.prefs.get(JabRefPreferences.DEFAULT_ENCODING));
+            ParserResult pr = OpenDatabaseAction.loadDatabase(tempFile, Globals.prefs.getDefaultEncoding());
             inTemp = pr.getDatabase();
             mdInTemp = pr.getMetaData();
             // Parse the modified file.
-            pr = OpenDatabaseAction.loadDatabase(f, Globals.prefs.get(JabRefPreferences.DEFAULT_ENCODING));
-            BibtexDatabase onDisk = pr.getDatabase();
+            pr = OpenDatabaseAction.loadDatabase(f, Globals.prefs.getDefaultEncoding());
+            BibDatabase onDisk = pr.getDatabase();
             MetaData mdOnDisk = pr.getMetaData();
 
             // Sort both databases according to a common sort key.
@@ -356,9 +356,9 @@ public class ChangeScanner implements Runnable {
      * @param old EntrySorter
      * @param neu EntrySorter
      * @param index int
-     * @return BibtexEntry
+     * @return BibEntry
      */
-    private static BibtexEntry bestFit(EntrySorter old, EntrySorter neu, int index) {
+    private static BibEntry bestFit(EntrySorter old, EntrySorter neu, int index) {
         double comp = -1;
         int found = 0;
         for (int i = 0; i < neu.getEntryCount(); i++) {
@@ -375,7 +375,7 @@ public class ChangeScanner implements Runnable {
         return neu.getEntryAt(found);
     }
 
-    private void scanPreamble(BibtexDatabase inMem1, BibtexDatabase onTmp, BibtexDatabase onDisk) {
+    private void scanPreamble(BibDatabase inMem1, BibDatabase onTmp, BibDatabase onDisk) {
         String mem = inMem1.getPreamble();
         String tmp = onTmp.getPreamble();
         String disk = onDisk.getPreamble();
@@ -389,7 +389,7 @@ public class ChangeScanner implements Runnable {
         }
     }
 
-    private void scanStrings(BibtexDatabase inMem1, BibtexDatabase onTmp, BibtexDatabase onDisk) {
+    private void scanStrings(BibDatabase inMem1, BibDatabase onTmp, BibDatabase onDisk) {
         int nTmp = onTmp.getStringCount();
         int nDisk = onDisk.getStringCount();
         if ((nTmp == 0) && (nDisk == 0)) {
@@ -413,10 +413,10 @@ public class ChangeScanner implements Runnable {
                         // We have found a string with a matching name.
                         if ((tmp.getContent() != null) && !tmp.getContent().equals(disk.getContent())) {
                             // But they have nonmatching contents, so we've found a change.
-                            BibtexString mem = findString(inMem1, tmp.getName(), usedInMem);
-                            if (mem != null) {
-                                changes.add(
-                                        new StringChange(mem, tmp, tmp.getName(), mem.getContent(), disk.getContent()));
+                            Optional<BibtexString> mem = findString(inMem1, tmp.getName(), usedInMem);
+                            if (mem.isPresent()) {
+                                changes.add(new StringChange(mem.get(), tmp, tmp.getName(), mem.get().getContent(),
+                                        disk.getContent()));
                             } else {
                                 changes.add(new StringChange(null, tmp, tmp.getName(), null, disk.getContent()));
                             }
@@ -478,10 +478,9 @@ public class ChangeScanner implements Runnable {
             // Still one or more non-matched strings. So they must have been removed.
             for (String nmId : notMatched) {
                 BibtexString tmp = onTmp.getString(nmId);
-                BibtexString mem = findString(inMem1, tmp.getName(), usedInMem);
-                if (mem != null) { // The removed string is not removed from the mem version.
-                    changes.add(new StringRemoveChange(tmp, tmp, mem));
-                }
+                // The removed string is not removed from the mem version.
+                findString(inMem1, tmp.getName(), usedInMem)
+                        .ifPresent(x -> changes.add(new StringRemoveChange(tmp, tmp, x)));
             }
         }
 
@@ -497,18 +496,18 @@ public class ChangeScanner implements Runnable {
         }
     }
 
-    private static BibtexString findString(BibtexDatabase base, String name, HashSet<Object> used) {
+    private static Optional<BibtexString> findString(BibDatabase base, String name, HashSet<Object> used) {
         if (!base.hasStringLabel(name)) {
-            return null;
+            return Optional.empty();
         }
         for (String key : base.getStringKeySet()) {
             BibtexString bs = base.getString(key);
             if (bs.getName().equals(name) && !used.contains(key)) {
                 used.add(key);
-                return bs;
+                return Optional.of(bs);
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     /**

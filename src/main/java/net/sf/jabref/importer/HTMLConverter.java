@@ -26,8 +26,9 @@ import org.apache.commons.logging.LogFactory;
 import net.sf.jabref.Globals;
 import net.sf.jabref.JabRefPreferences;
 import net.sf.jabref.exporter.layout.LayoutFormatter;
+import net.sf.jabref.logic.formatter.Formatter;
 
-public class HTMLConverter implements LayoutFormatter {
+public class HTMLConverter implements LayoutFormatter, Formatter {
 
     private static final Log LOGGER = LogFactory.getLog(HTMLConverter.class);
 
@@ -772,11 +773,11 @@ public class HTMLConverter implements LayoutFormatter {
     public HTMLConverter() {
         super();
         for (String[] aConversionList : conversionList) {
-            if (aConversionList[2].length() >= 1) {
-                if (aConversionList[1].length() >= 1) {
+            if (!(aConversionList[2].isEmpty())) {
+                if (!(aConversionList[1].isEmpty())) {
                     escapedSymbols.put("&" + aConversionList[1] + ";", aConversionList[2]);
                 }
-                if (aConversionList[0].length() >= 1) {
+                if (!(aConversionList[0].isEmpty())) {
                     numSymbols.put(Integer.decode(aConversionList[0]), aConversionList[2]);
                     if (Integer.decode(aConversionList[0]) > 128) {
                         Character c = (char) Integer.decode(aConversionList[0]).intValue();
@@ -902,7 +903,7 @@ public class HTMLConverter implements LayoutFormatter {
     }
 
 
-    private final int MAX_TAG_LENGTH = 100;
+    private static final int MAX_TAG_LENGTH = 100;
 
 
     /*private final int MAX_TAG_LENGTH = 30;*/
@@ -926,5 +927,10 @@ public class HTMLConverter implements LayoutFormatter {
         } else {
             return position; // Don't do anything.
         }
+    }
+
+    @Override
+    public String getName() {
+        return "HTMLConverter";
     }
 }

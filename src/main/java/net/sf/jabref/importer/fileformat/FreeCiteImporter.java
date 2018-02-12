@@ -23,6 +23,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -31,8 +32,11 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import net.sf.jabref.importer.OutputPrinter;
-import net.sf.jabref.model.entry.BibtexEntry;
+import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.model.entry.BibtexEntryTypes;
 import net.sf.jabref.Globals;
 import net.sf.jabref.JabRef;
@@ -46,6 +50,8 @@ import net.sf.jabref.model.entry.EntryType;
  */
 public class FreeCiteImporter extends ImportFormat {
 
+    private static final Log LOGGER = LogFactory.getLog(FreeCiteImporter.class);
+
     @Override
     public boolean isRecognizedFormat(InputStream in) throws IOException {
         // TODO: We don't know how to recognize text files, therefore we return
@@ -54,7 +60,7 @@ public class FreeCiteImporter extends ImportFormat {
     }
 
     @Override
-    public List<BibtexEntry> importEntries(InputStream in, OutputPrinter status)
+    public List<BibEntry> importEntries(InputStream in, OutputPrinter status)
             throws IOException {
         try(Scanner scan = new Scanner(in)) {
             String text = scan.useDelimiter("\\A").next();
@@ -62,11 +68,11 @@ public class FreeCiteImporter extends ImportFormat {
         }
     }
 
-    public List<BibtexEntry> importEntries(String text, OutputPrinter status) {
+    public List<BibEntry> importEntries(String text, OutputPrinter status) {
         // URLencode the string for transmission
         String urlencodedCitation = null;
         try {
-            urlencodedCitation = URLEncoder.encode(text, "UTF-8");
+            urlencodedCitation = URLEncoder.encode(text, StandardCharsets.UTF_8.name());
         } catch (UnsupportedEncodingException e) {
             // e.printStackTrace();
         }
@@ -93,17 +99,17 @@ public class FreeCiteImporter extends ImportFormat {
             // write parameters
             writer.write(data);
             writer.flush();
+        } catch (IllegalStateException e) {
+            LOGGER.warn("Already connected.", e);
         } catch (IOException e) {
             status.showMessage(Localization.lang("Unable to connect to FreeCite online service."));
-            return null;
-        } catch (Exception ex) {
-            ex.printStackTrace();
+            LOGGER.warn("Unable to connect to FreeCite online service.", e);
             return null;
         }
         // output is in conn.getInputStream();
         // new InputStreamReader(conn.getInputStream())
 
-        List<BibtexEntry> res = new ArrayList<>();
+        List<BibEntry> res = new ArrayList<>();
 
         XMLInputFactory factory = XMLInputFactory.newInstance();
         try {
@@ -115,7 +121,7 @@ public class FreeCiteImporter extends ImportFormat {
 
                     StringBuilder noteSB = new StringBuilder();
 
-                    BibtexEntry e = new BibtexEntry();
+                    BibEntry e = new BibEntry();
                     // fallback type
                     EntryType type = BibtexEntryTypes.INPROCEEDINGS;
 

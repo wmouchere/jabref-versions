@@ -50,8 +50,6 @@ import javax.swing.ListSelectionModel;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableColumnModel;
 
-import net.sf.jabref.Globals;
-import net.sf.jabref.JabRefPreferences;
 import net.sf.jabref.gui.util.FocusRequester;
 import net.sf.jabref.gui.util.PositionWindow;
 import net.sf.jabref.importer.fileformat.ImportFormat;
@@ -164,8 +162,6 @@ class ZipFileChooser extends JDialog {
 
     /** table of Zip entries */
     private final JTable table;
-    /** shortcut to preferences */
-    private final JabRefPreferences prefs = Globals.prefs;
     /** this */
     private final ZipFileChooser zipFileChooser;
     /** import customization dialog, owner of this dialog */
@@ -223,7 +219,7 @@ class ZipFileChooser extends JDialog {
         });
 
         // ok: get selected class and check if it is instantiable as an importer
-        JButton okButton = new JButton(Localization.lang("Ok"));
+        JButton okButton = new JButton(Localization.lang("OK"));
         okButton.addActionListener(new ActionListener() {
 
             @Override
@@ -270,7 +266,7 @@ class ZipFileChooser extends JDialog {
         JPanel mainPanel = new JPanel();
         //ActionMap am = mainPanel.getActionMap();
         //InputMap im = mainPanel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
-        //im.put(prefs.getKey(KeyBinds.CLOSE_DIALOG), "close");
+        //im.put(Globals.getKeyPrefs().getKey(KeyBinds.CLOSE_DIALOG), "close");
         //am.put("close", closeAction);
         mainPanel.setLayout(new BorderLayout());
         mainPanel.add(sp, BorderLayout.CENTER);

@@ -63,6 +63,8 @@ import java.awt.GridLayout;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Optional;
 import java.util.Vector;
 
 import javax.swing.Box;
@@ -185,10 +187,8 @@ class FontSelector extends JButton {
 
         @Override
         public void actionPerformed(ActionEvent evt) {
-            Font font = new FontSelectorDialog(FontSelector.this, getFont()).getSelectedFont();
-            if (font != null) {
-                setFont(font);
-            }
+            Optional<Font> font = new FontSelectorDialog(FontSelector.this, getFont()).getSelectedFont();
+            font.ifPresent(FontSelector.this::setFont);
         }
     }
 
@@ -284,7 +284,7 @@ public class FontSelectorDialog extends JDialog {
         buttons.setBorder(new EmptyBorder(12, 0, 0, 0));
         buttons.add(Box.createGlue());
 
-        ok = new JButton(Localization.lang("Ok"));
+        ok = new JButton(Localization.lang("OK"));
         ok.addActionListener(new ActionHandler());
         getRootPane().setDefaultButton(ok);
         buttons.add(ok);
@@ -313,9 +313,9 @@ public class FontSelectorDialog extends JDialog {
         dispose();
     }
 
-    public Font getSelectedFont() {
+    public Optional<Font> getSelectedFont() {
         if (!isOK) {
-            return null;
+            return Optional.empty();
         }
 
         int size;
@@ -325,7 +325,7 @@ public class FontSelectorDialog extends JDialog {
             size = 14;
         }
 
-        return new Font(familyField.getText(), styleList.getSelectedIndex(), size);
+        return Optional.of(new Font(familyField.getText(), styleList.getSelectedIndex(), size));
     }
 
 
@@ -373,7 +373,8 @@ public class FontSelectorDialog extends JDialog {
             String[] _array = new String[nameVector.size()];
             nameVector.copyInto(_array);
             return _array;
-        } catch (Exception ex) {
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InvocationTargetException |
+                IllegalAccessException | IllegalArgumentException ex) {
             return null;//return Toolkit.getDefaultToolkit().getFontList();
         }
     }

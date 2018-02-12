@@ -33,8 +33,12 @@ public class IconTheme {
     public static Font FONT;
     public static Font FONT_16;
 
-    public static final Color DEFAULT_COLOR = new Color(79, 95, 143);
-    public static final Color DEFAULT_DISABLED_COLOR = new Color(200, 200, 200);
+    //public static final Color DEFAULT_COLOR = new Color(79, 95, 143); // JabRef's default color
+    public static final Color DEFAULT_COLOR = new Color(0x155115); // Christmas edition
+
+    //public static final Color DEFAULT_DISABLED_COLOR = new Color(200, 200, 200); // JabRef's default color
+    public static final Color DEFAULT_DISABLED_COLOR = new Color(0x990000); // Christmas edition
+
     public static final int DEFAULT_SIZE = 24;
     public static final int SMALL_SIZE = 16;
 

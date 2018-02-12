@@ -76,7 +76,7 @@ import net.sf.jabref.JabRef;
 import net.sf.jabref.JabRefExecutorService;
 import net.sf.jabref.JabRefPreferences;
 import net.sf.jabref.logic.l10n.Localization;
-import net.sf.jabref.model.database.BibtexDatabase;
+import net.sf.jabref.model.database.BibDatabase;
 import net.sf.jabref.model.entry.BibtexEntryType;
 import net.sf.jabref.gui.desktop.JabRefDesktop;
 import net.sf.jabref.bibtex.EntryTypes;
@@ -106,16 +106,13 @@ public class FindUnlinkedFilesDialog extends JDialog {
     public static final String ACTION_COMMAND = "findUnlinkedFiles";
     public static final String ACTION_MENU_TITLE = Localization.menuTitle("Find unlinked files...");
     public static final String ACTION_ICON = "toggleSearch";
-    public static final String ACTION_KEYBINDING_ACTION = "Find unlinked files";
-    // @formatter:off
     public static final String ACTION_SHORT_DESCRIPTION = Localization.lang("Searches for unlinked PDF files on the file system");
-    // @formatter:on
 
     private static final String GLOBAL_PREFS_WORKING_DIRECTORY_KEY = "findUnlinkedFilesWD";
     private static final String GLOBAL_PREFS_DIALOG_SIZE_KEY = "findUnlinkedFilesDialogSize";
 
     private JabRefFrame frame;
-    private BibtexDatabase database;
+    private BibDatabase database;
     private EntryFromFileCreatorManager creatorManager;
     private UnlinkedFilesCrawler crawler;
 
@@ -395,7 +392,7 @@ public class FindUnlinkedFilesDialog extends JDialog {
         }
 
         String path = textfieldDirectoryPath.getText();
-        if ((path == null) || "".equals(path)) {
+        if ((path == null) || path.isEmpty()) {
             fileChooser.setCurrentDirectory(lastSelectedDirectory);
         } else {
             fileChooser.setCurrentDirectory(new File(path));
@@ -1113,9 +1110,6 @@ public class FindUnlinkedFilesDialog extends JDialog {
             this.entryType = bibtexType;
         }
 
-        /* (non-Javadoc)
-         * @see java.lang.Object#toString()
-         */
         @Override
         public String toString() {
             if (entryType == null) {

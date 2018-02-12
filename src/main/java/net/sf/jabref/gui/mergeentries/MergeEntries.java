@@ -29,8 +29,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import net.sf.jabref.exporter.LatexFieldFormatter;
-import net.sf.jabref.bibtex.BibtexEntryWriter;
-import net.sf.jabref.model.entry.BibtexEntry;
+import net.sf.jabref.bibtex.BibEntryWriter;
+import net.sf.jabref.model.entry.BibEntry;
 import net.sf.jabref.Globals;
 import net.sf.jabref.JabRefPreferences;
 import net.sf.jabref.MetaData;
@@ -52,21 +52,19 @@ import com.jgoodies.forms.layout.ColumnSpec;
 public class MergeEntries {
 
     // Headings
-    // @formatter:off
     private final String[] columnHeadings = {Localization.lang("Field"),
             Localization.lang("Left entry"),
             Localization.lang("Left"),
             Localization.lang("None"),
             Localization.lang("Right"),
             Localization.lang("Right entry")};
-    // @formatter:on
     private final Dimension DIM = new Dimension(800, 800);
     private JRadioButton[][] rb;
     private Boolean[] identical;
     private final CellConstraints cc = new CellConstraints();
-    private final BibtexEntry mergedEntry = new BibtexEntry();
-    private final BibtexEntry one;
-    private final BibtexEntry two;
+    private final BibEntry mergedEntry = new BibEntry();
+    private final BibEntry one;
+    private final BibEntry two;
     private JTextArea jta;
     private PreviewPanel pp;
     private Boolean doneBuilding = false;
@@ -84,7 +82,7 @@ public class MergeEntries {
      * @param bOne First entry
      * @param bTwo Second entry
      */
-    public MergeEntries(BibtexEntry bOne, BibtexEntry bTwo) {
+    public MergeEntries(BibEntry bOne, BibEntry bTwo) {
         one = bOne;
         two = bTwo;
         initialize();
@@ -98,7 +96,7 @@ public class MergeEntries {
      * @param headingOne Heading for first entry
      * @param headingTwo Heading for second entry
      */
-    public MergeEntries(BibtexEntry bOne, BibtexEntry bTwo, String headingOne, String headingTwo) {
+    public MergeEntries(BibEntry bOne, BibEntry bTwo, String headingOne, String headingTwo) {
         columnHeadings[1] = headingOne;
         columnHeadings[5] = headingTwo;
         one = bOne;
@@ -338,7 +336,7 @@ public class MergeEntries {
         jta.setEditable(false);
         StringWriter sw = new StringWriter();
         try {
-            new BibtexEntryWriter(new LatexFieldFormatter(), false).write(mergedEntry, sw);
+            new BibEntryWriter(new LatexFieldFormatter(), false).write(mergedEntry, sw);
         } catch (IOException ex) {
             LOGGER.error("Error in entry" + ": " + ex.getMessage(), ex);
         }
@@ -372,9 +370,9 @@ public class MergeEntries {
     }
 
     /**
-     * @return Merged BibtexEntry
+     * @return Merged BibEntry
      */
-    public BibtexEntry getMergeEntry() {
+    public BibEntry getMergeEntry() {
         return mergedEntry;
     }
 
@@ -386,7 +384,7 @@ public class MergeEntries {
     }
 
     /**
-     * Update the merged BibtexEntry with source and preview panel everytime something is changed
+     * Update the merged BibEntry with source and preview panel everytime something is changed
      */
     private void updateAll() {
         if (!doneBuilding) {
@@ -410,7 +408,7 @@ public class MergeEntries {
                 } else if (rb[2][i + 1].isSelected()) {
                     mergedEntry.setField(jointStrings[i], two.getField(jointStrings[i]));
                 } else {
-                    mergedEntry.setField(jointStrings[i], null);
+                    mergedEntry.clearField(jointStrings[i]);
                 }
             }
         }
@@ -421,7 +419,7 @@ public class MergeEntries {
         // Update the Bibtex source view
         StringWriter sw = new StringWriter();
         try {
-            new BibtexEntryWriter(new LatexFieldFormatter(), false).write(mergedEntry, sw);
+            new BibEntryWriter(new LatexFieldFormatter(), false).write(mergedEntry, sw);
         } catch (IOException ex) {
             LOGGER.error("Error in entry" + ": " + ex.getMessage(), ex);
         }
