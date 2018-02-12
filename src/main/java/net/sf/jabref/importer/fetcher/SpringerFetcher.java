@@ -42,7 +42,6 @@ public class SpringerFetcher implements EntryFetcher {
     private static final Log LOGGER = LogFactory.getLog(SpringerFetcher.class);
     private static final int MAX_PER_PAGE = 100;
     private boolean shouldContinue;
-    private final JSONEntryParser jep;
 
 
     @Override
@@ -80,7 +79,7 @@ public class SpringerFetcher implements EntryFetcher {
                         try {
                             numberToFetch = Integer.parseInt(strCount.trim());
                             break;
-                        } catch (RuntimeException ex) {
+                        } catch (NumberFormatException ex) {
                             status.showMessage(Localization.lang("Please enter a valid number"));
                         }
                     }
@@ -143,7 +142,6 @@ public class SpringerFetcher implements EntryFetcher {
 
     public SpringerFetcher() {
         super();
-        jep = new JSONEntryParser();
     }
 
 }

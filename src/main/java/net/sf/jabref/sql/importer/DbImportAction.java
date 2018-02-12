@@ -19,7 +19,7 @@ import java.awt.event.ActionEvent;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Vector;
 
 import javax.swing.AbstractAction;
@@ -55,7 +55,7 @@ public class DbImportAction extends AbstractWorker {
     private boolean connectToDB;
     private final JabRefFrame frame;
     private DBStrings dbs;
-    private ArrayList<Object[]> databases;
+    private List<DBImporterResult> databases;
 
 
     public DbImportAction(JabRefFrame frame) {
@@ -97,8 +97,9 @@ public class DbImportAction extends AbstractWorker {
         // panel.metaData().getDBStrings();
 
         // get DBStrings from user if necessary
-        if (!dbs.isConfigValid()) {
-
+        if (dbs.isConfigValid()) {
+            connectToDB = true;
+        } else {
             // init DB strings if necessary
             if (!dbs.isInitialized()) {
                 dbs.initialize();
@@ -116,11 +117,6 @@ public class DbImportAction extends AbstractWorker {
                 dbs = dbd.getDBStrings();
                 dbd.dispose();
             }
-
-        } else {
-
-            connectToDB = true;
-
         }
 
     }
@@ -149,7 +145,11 @@ public class DbImportAction extends AbstractWorker {
                         matrix.add(v);
                     }
 
-                    if (!matrix.isEmpty()) {
+                    if (matrix.isEmpty()) {
+                        JOptionPane.showMessageDialog(frame,
+                                Localization.lang("There are no available databases to be imported"),
+                                Localization.lang("Import from SQL database"), JOptionPane.INFORMATION_MESSAGE);
+                    } else {
                         DBImportExportDialog dialogo = new DBImportExportDialog(frame, matrix,
                                 DBImportExportDialog.DialogType.IMPORTER);
                         if (dialogo.removeAction) {
@@ -158,9 +158,9 @@ public class DbImportAction extends AbstractWorker {
                             performImport();
                         } else if (dialogo.moreThanOne) {
                             databases = importer.performImport(dbs, dialogo.listOfDBs);
-                            for (Object[] res : databases) {
-                                database = (BibDatabase) res[0];
-                                metaData = (MetaData) res[1];
+                            for (DBImporterResult res : databases) {
+                                database = res.getDatabase();
+                                metaData = res.getMetaData();
                                 dbs.isConfigValid(true);
                             }
                             frame.output(Localization.lang("%0 databases will be imported",
@@ -168,10 +168,6 @@ public class DbImportAction extends AbstractWorker {
                         } else {
                             frame.output(Localization.lang("Importing cancelled"));
                         }
-                    } else {
-                        JOptionPane.showMessageDialog(frame,
-                                Localization.lang("There are no available databases to be imported"),
-                                Localization.lang("Import from SQL database"), JOptionPane.INFORMATION_MESSAGE);
                     }
                 }
             } catch (Exception ex) {
@@ -192,13 +188,13 @@ public class DbImportAction extends AbstractWorker {
         if (databases == null) {
             return;
         }
-        for (Object[] res : databases) {
-            database = (BibDatabase) res[0];
-            metaData = (MetaData) res[1];
+        for (DBImporterResult res : databases) {
+            database = res.getDatabase();
+            metaData = res.getMetaData();
             if (database != null) {
                 BasePanel pan = frame.addTab(database, null, metaData, Globals.prefs.getDefaultEncoding(), true);
                 pan.metaData().setDBStrings(dbs);
-                frame.setTabTitle(pan, res[2] + "(Imported)", "Imported DB");
+                frame.setTabTitle(pan, res.getName() + "(Imported)", "Imported DB");
                 pan.markBaseChanged();
             }
         }

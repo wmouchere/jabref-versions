@@ -17,11 +17,6 @@ package net.sf.jabref.gui.preftabs;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
-
-import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -158,58 +153,13 @@ class FileTab extends JPanel implements PrefsTab {
         add(pan, BorderLayout.CENTER);
     }
 
-    private int getBgValue(ButtonGroup buttonGroup) {
-        int index = 0;
-        for (Enumeration<AbstractButton> buttons = buttonGroup.getElements(); buttons.hasMoreElements();) {
-            if (buttons.nextElement().isSelected()) {
-                return index;
-            }
-            index++;
-
-        }
-        return 0;
-
-    }
-
-    private void setBgSelected(ButtonGroup buttonGroup, int buttonIndex) {
-        int currentIndex = 0;
-
-        for (Enumeration<AbstractButton> buttons = buttonGroup.getElements(); buttons.hasMoreElements();) {
-            if (currentIndex == buttonIndex) {
-                buttons.nextElement().setSelected(true);
-
-            } else {
-                buttons.nextElement().setSelected(false);
-
-            }
-            currentIndex++;
-
-        }
-
-    }
-
-    //    private void setValueFieldOrderStyle(){
-    //        fieldOrderStyle=getBgValue(bgFieldOrderStyle);
-    //    }
-
-    private void createAdFieldOrderBg(DefaultFormBuilder builder, ButtonGroup buttonGroup,
-            JTextField textField) {
-        //for LWang_AdjustableFieldOrder
-
-        for (Enumeration<AbstractButton> buttons = buttonGroup.getElements(); buttons.hasMoreElements();) {
-            builder.append(buttons.nextElement());
-            builder.nextLine();
-        }
-        builder.append(textField);
-        builder.nextLine();
-    }
 
     @Override
     public void setValues() {
         openLast.setSelected(prefs.getBoolean(JabRefPreferences.OPEN_LAST_EDITED));
         backup.setSelected(prefs.getBoolean(JabRefPreferences.BACKUP));
 
-        String newline = prefs.get(net.sf.jabref.JabRefPreferences.NEWLINE);
+        String newline = prefs.get(JabRefPreferences.NEWLINE);
         if ("\r".equals(newline)) {
             newlineSeparator.setSelectedIndex(0);
         } else if ("\n".equals(newline)) {
@@ -246,7 +196,7 @@ class FileTab extends JPanel implements PrefsTab {
         default:
             newline = "\r\n";
         }
-        prefs.put(net.sf.jabref.JabRefPreferences.NEWLINE, newline);
+        prefs.put(JabRefPreferences.NEWLINE, newline);
         // we also have to change Globals variable as globals is not a getter, but a constant
         Globals.NEWLINE = newline;
 

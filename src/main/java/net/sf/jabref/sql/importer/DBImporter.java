@@ -21,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import net.sf.jabref.bibtex.EntryTypes;
 import net.sf.jabref.model.entry.*;
@@ -49,7 +50,7 @@ public abstract class DBImporter extends DBImporterExporter {
 
     private static final Log LOGGER = LogFactory.getLog(DBImporter.class);
 
-    private final ArrayList<String> columnsNotConsideredForEntries = new ArrayList<>(
+    private final List<String> columnsNotConsideredForEntries = new ArrayList<>(
             Arrays.asList("cite_key", "entry_types_id", "database_id", "jabref_eid", "entries_id"));
 
 
@@ -77,19 +78,20 @@ public abstract class DBImporter extends DBImporterExporter {
      * BibDatabase, a MetaData and a String with the bib database name stored in the DBMS
      * @throws Exception
      */
-    public ArrayList<Object[]> performImport(DBStrings dbs, List<String> listOfDBs) throws Exception {
-        ArrayList<Object[]> result = new ArrayList<>();
+    public List<DBImporterResult> performImport(DBStrings dbs, List<String> listOfDBs) throws Exception {
+        List<DBImporterResult> result = new ArrayList<>();
         try (Connection conn = this.connectToDB(dbs)) {
 
             Iterator<String> itLista = listOfDBs.iterator();
-            String jabrefDBs = "(";
+            StringBuffer jabrefDBsb = new StringBuffer();
+            jabrefDBsb.append('(');
             while (itLista.hasNext()) {
-                jabrefDBs += '\'' + itLista.next() + "',";
+                jabrefDBsb.append('\'').append(itLista.next()).append("',");
             }
-            jabrefDBs = jabrefDBs.substring(0, jabrefDBs.length() - 1) + ')';
+            jabrefDBsb.deleteCharAt(jabrefDBsb.length() - 1).append(')');
 
             try (Statement statement = SQLUtil.queryAllFromTable(conn,
-                    "jabref_database WHERE database_name IN " + jabrefDBs)) {
+                    "jabref_database WHERE database_name IN " + jabrefDBsb.toString())) {
                 ResultSet rsDatabase = statement.getResultSet();
                 while (rsDatabase.next()) {
                     BibDatabase database = new BibDatabase();
@@ -104,14 +106,9 @@ public abstract class DBImporter extends DBImporterExporter {
                         rsEntryType.getStatement().close();
                     }
 
-                    List<String> colNames = this.readColumnNames(conn);
-                    for (String next : colNames) {
-                        if (!columnsNotConsideredForEntries.contains(next)) {
-                            colNames.add(next);
-                        }
-                    }
+                    List<String> colNames = this.readColumnNames(conn).stream().filter(column -> !columnsNotConsideredForEntries.contains(column)).collect(Collectors.toList());
 
-                    String database_id = rsDatabase.getString("database_id");
+                    final String database_id = rsDatabase.getString("database_id");
                     // Read the entries and create BibEntry instances:
                     HashMap<String, BibEntry> entries = new HashMap<>();
                     try (Statement entryStatement = SQLUtil.queryAllFromTable(conn,
@@ -155,14 +152,12 @@ public abstract class DBImporter extends DBImporterExporter {
                     metaData.initializeNewDatabase();
                     // Read the groups tree:
                     importGroupsTree(metaData, entries, conn, database_id);
-                    result.add(new Object[]{database, metaData, rsDatabase.getString("database_name")});
+                    result.add(new DBImporterResult(database, metaData, rsDatabase.getString("database_name")));
                 }
-
-                rsDatabase.close();
             }
-            conn.close();
-            return result;
         }
+
+        return result;
     }
 
     /**
@@ -178,9 +173,9 @@ public abstract class DBImporter extends DBImporterExporter {
                 "SELECT label FROM group_types WHERE group_types_id='" + groupId + "';");
     }
 
-    private void importGroupsTree(MetaData metaData, HashMap<String, BibEntry> entries, Connection conn,
-                                  String database_id) throws SQLException {
-        HashMap<String, GroupTreeNode> groups = new HashMap<>();
+    private void importGroupsTree(MetaData metaData, Map<String, BibEntry> entries, Connection conn,
+            final String database_id) throws SQLException {
+        Map<String, GroupTreeNode> groups = new HashMap<>();
         LinkedHashMap<GroupTreeNode, String> parentIds = new LinkedHashMap<>();
         GroupTreeNode rootNode = new GroupTreeNode(new AllEntriesGroup());
 

@@ -10,6 +10,29 @@ We refer to [GitHub issues](https://github.com/JabRef/jabref/issues) by using `#
 to [sourceforge bugs](https://sourceforge.net/p/jabref/bugs/) by using `bug NUM`, and
 to [sourceforge feature requests](https://sourceforge.net/p/jabref/features/) by using `feature NUM`.
 
+## [3.2] - 2016-01-10
+
+### Changed
+- All import/open database warnings are now shown in a scrolling text area
+- Add an integrity check to ensure that a url has a correct protocol, implements #358
+
+### Fixed
+- Changes in customized entry types are now directly reflected in the table when clicking "Apply" or "OK"
+- Reference list generation works for OpenOffice/LibreOffice again, fixes #593
+- ACM fetcher works again, fixes #545
+- Use default file icon for custom external file types, fixes #598
+- Fixed #608: Export works again
+- Fixed #417: Table now updates when switching groups
+- Fixed #534: No OpenOffice setup panel in preferences
+- Fixed #545: ACM fetcher works again
+- Fixed #593: Reference list generation works for OpenOffice/LibreOffice again
+- Fixed #598: Use default file icon for custom external file types
+- Fixed #607: OpenOffice/LibreOffice works on OSX again
+
+### Removed
+- OpenOffice/LibreOffice is removed from the push-to-application button and only accessed through the side panel
+
+
 ## [3.1] - 2015-12-24
 
 ### Changed
@@ -49,6 +72,7 @@ to [sourceforge feature requests](https://sourceforge.net/p/jabref/features/) by
 - Fixed #473: Import/export to external database works again
 - Fixed #526: OpenOffice/LibreOffice connection works again on Linux/OSX
 - Fixed #533: Preview parsed incorrectly when regular expression was enabled
+- Fixed: MedlinePlain Importer made more resistant for malformed entries
 - Fixed #564: Cite command changes are immediately reflected in the push-to-application actions, and not only after restart
 
 ### Removed
@@ -189,6 +213,7 @@ Since much functionality has changed during development, a release of this versi
 
 The changelog of 2.11 and versions before is maintained as [text file](https://github.com/JabRef/jabref/blob/dev_2.11/CHANGELOG) in the [dev_2.11 branch](https://github.com/JabRef/jabref/tree/dev_2.11).
 
+[3.2]: https://github.com/JabRef/jabref/compare/v3.1...v3.2
 [3.1]: https://github.com/JabRef/jabref/compare/v3.0...v3.1
 [3.0]: https://github.com/JabRef/jabref/compare/v2.11.1...v3.0
 [dev_2.11]: https://github.com/JabRef/jabref/compare/v2.11.1...dev_2.11

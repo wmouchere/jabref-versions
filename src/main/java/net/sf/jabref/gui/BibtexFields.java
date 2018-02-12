@@ -32,11 +32,11 @@ package net.sf.jabref.gui;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Vector;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import net.sf.jabref.Globals;
 import net.sf.jabref.JabRefPreferences;
@@ -68,10 +68,10 @@ public class BibtexFields {
             {"author", "title", "year", BibEntry.KEY_FIELD};
 
     // singleton instance
-    private static final BibtexFields runtime = new BibtexFields();
+    private static final BibtexFields RUNTIME = new BibtexFields();
 
     // contains all bibtex-field objects (BibtexSingleField)
-    private final HashMap<String, BibtexSingleField> fieldSet;
+    private final Map<String, BibtexSingleField> fieldSet;
 
     // contains all known (and public) bibtex fieldnames
     private final String[] PUBLIC_FIELDS;
@@ -258,7 +258,7 @@ public class BibtexFields {
         }
 
         // collect all public fields for the PUBLIC_FIELDS array
-        Vector<String> pFields = new Vector<>(fieldSet.size());
+        List<String> pFields = new ArrayList<>(fieldSet.size());
         for (BibtexSingleField sField : fieldSet.values()) {
             if (!sField.isPrivate()) {
                 pFields.add(sField.getFieldName());
@@ -269,7 +269,7 @@ public class BibtexFields {
 
         PUBLIC_FIELDS = pFields.toArray(new String[pFields.size()]);
         // sort the entries
-        java.util.Arrays.sort(PUBLIC_FIELDS);
+        Arrays.sort(PUBLIC_FIELDS);
 
     }
 
@@ -279,16 +279,16 @@ public class BibtexFields {
      * add a field descriptor for the new field.
      */
     public static void setNumericFieldsFromPrefs() {
-        String[] numFields = Globals.prefs.getStringArray(JabRefPreferences.NUMERIC_FIELDS);
-        if (numFields == null) {
+        List<String> numFields = Globals.prefs.getStringList(JabRefPreferences.NUMERIC_FIELDS);
+        if (numFields.isEmpty()) {
             return;
         }
         // Build a Set of field names for the fields that should be sorted numerically:
-        HashSet<String> nF = new HashSet<>();
-        Collections.addAll(nF, numFields);
+        Set<String> nF = new HashSet<>();
+        nF.addAll(numFields);
         // Look through all registered fields, and activate numeric sorting if necessary:
-        for (String fieldName : BibtexFields.runtime.fieldSet.keySet()) {
-            BibtexSingleField field = BibtexFields.runtime.fieldSet.get(fieldName);
+        for (String fieldName : BibtexFields.RUNTIME.fieldSet.keySet()) {
+            BibtexSingleField field = BibtexFields.RUNTIME.fieldSet.get(fieldName);
             if (!field.isNumeric() && nF.contains(fieldName)) {
                 field.setNumeric(nF.contains(fieldName));
             }
@@ -298,7 +298,7 @@ public class BibtexFields {
         for (String fieldName : nF) {
             BibtexSingleField field = new BibtexSingleField(fieldName, false);
             field.setNumeric(true);
-            BibtexFields.runtime.fieldSet.put(fieldName, field);
+            BibtexFields.RUNTIME.fieldSet.put(fieldName, field);
         }
 
     }
@@ -317,7 +317,7 @@ public class BibtexFields {
     // --------------------------------------------------------------------------
     private static BibtexSingleField getField(String name) {
         if (name != null) {
-            return BibtexFields.runtime.fieldSet.get(name.toLowerCase());
+            return BibtexFields.RUNTIME.fieldSet.get(name.toLowerCase());
         }
 
         return null;
@@ -392,7 +392,7 @@ public class BibtexFields {
      * returns a List with all fieldnames
      */
     public static List<String> getAllFieldNames() {
-        return Arrays.asList(BibtexFields.runtime.PUBLIC_FIELDS);
+        return Arrays.asList(BibtexFields.RUNTIME.PUBLIC_FIELDS);
     }
 
     /**
@@ -400,7 +400,7 @@ public class BibtexFields {
      */
     public static List<String> getAllPrivateFieldNames() {
         List<String> pFields = new ArrayList<>();
-        for (BibtexSingleField sField : BibtexFields.runtime.fieldSet.values()) {
+        for (BibtexSingleField sField : BibtexFields.RUNTIME.fieldSet.values()) {
             if (sField.isPrivate()) {
                 pFields.add(sField.getFieldName());
             }
@@ -413,14 +413,14 @@ public class BibtexFields {
      * returns the fieldname of the entry at index t
      */
     public static String getFieldName(int t) {
-        return BibtexFields.runtime.PUBLIC_FIELDS[t];
+        return BibtexFields.RUNTIME.PUBLIC_FIELDS[t];
     }
 
     /**
      * returns the number of available fields
      */
     public static int numberOfPublicFields() {
-        return BibtexFields.runtime.PUBLIC_FIELDS.length;
+        return BibtexFields.RUNTIME.PUBLIC_FIELDS.length;
     }
 
 
@@ -455,9 +455,6 @@ public class BibtexFields {
 
         private int editorType = GUIGlobals.STANDARD_EDITOR;
 
-        // a alternative displayname, e.g. used for
-        // "citeseercitationcount"="Popularity"
-        private String alternativeDisplayName;
 
         // the extras data
         // fieldExtras contains mappings to tell the EntryEditor to add a specific
@@ -478,9 +475,6 @@ public class BibtexFields {
         // private HashMap props = new HashMap() ;
 
         // some constructors ;-)
-        public BibtexSingleField(String fieldName) {
-            name = fieldName;
-        }
 
         public BibtexSingleField(String fieldName, boolean pStandard) {
             name = fieldName;

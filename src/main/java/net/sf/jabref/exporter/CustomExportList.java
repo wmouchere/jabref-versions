@@ -15,7 +15,10 @@
 */
 package net.sf.jabref.exporter;
 
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 
@@ -23,6 +26,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import net.sf.jabref.Globals;
+import net.sf.jabref.JabRefPreferences;
 import ca.odell.glazedlists.EventList;
 import ca.odell.glazedlists.SortedList;
 import ca.odell.glazedlists.BasicEventList;
@@ -39,7 +43,7 @@ public class CustomExportList {
 
     private final EventList<String[]> list;
     private final SortedList<String[]> sorted;
-    private final TreeMap<String, ExportFormat> formats = new TreeMap<>();
+    private final Map<String, ExportFormat> formats = new TreeMap<>();
 
     private static final Log LOGGER = LogFactory.getLog(CustomExportList.class);
 
@@ -49,7 +53,7 @@ public class CustomExportList {
         sorted = new SortedList<>(list, comp);
     }
 
-    public TreeMap<String, ExportFormat> getCustomExportFormats() {
+    public Map<String, ExportFormat> getCustomExportFormats() {
         formats.clear();
         readPrefs();
         return formats;
@@ -67,44 +71,44 @@ public class CustomExportList {
         formats.clear();
         list.clear();
         int i = 0;
-        String[] s;
-        while ((s = Globals.prefs.getStringArray("customExportFormat" + i)) != null) {
+        List<String> s;
+        while (!((s = Globals.prefs.getStringList(JabRefPreferences.CUSTOM_EXPORT_FORMAT + i)).isEmpty())) {
             Optional<ExportFormat> format = createFormat(s);
             if (format.isPresent()) {
                 formats.put(format.get().getConsoleName(), format.get());
-                list.add(s);
+                list.add(s.toArray(new String[s.size()]));
             } else {
-                String customExportFormat = Globals.prefs.get("customExportFormat" + i);
+                String customExportFormat = Globals.prefs.get(JabRefPreferences.CUSTOM_EXPORT_FORMAT + i);
                 LOGGER.error("Error initializing custom export format from string " + customExportFormat);
             }
             i++;
         }
     }
 
-    private Optional<ExportFormat> createFormat(String[] s) {
-        if (s.length < 3) {
+    private Optional<ExportFormat> createFormat(List<String> s) {
+        if (s.size() < 3) {
             return Optional.empty();
         }
         String lfFileName;
-        if (s[1].endsWith(".layout")) {
-            lfFileName = s[1].substring(0, s[1].length() - 7);
+        if (s.get(1).endsWith(".layout")) {
+            lfFileName = s.get(1).substring(0, s.get(1).length() - 7);
         } else {
-            lfFileName = s[1];
+            lfFileName = s.get(1);
         }
-        ExportFormat format = new ExportFormat(s[0], s[0], lfFileName, null, s[2]);
+        ExportFormat format = new ExportFormat(s.get(0), s.get(0), lfFileName, null, s.get(2));
         format.setCustomExport(true);
         return Optional.of(format);
     }
 
     public void addFormat(String[] s) {
-        createFormat(s).ifPresent(format -> {
+        createFormat(Arrays.asList(s)).ifPresent(format -> {
             formats.put(format.getConsoleName(), format);
             list.add(s);
         });
     }
 
     public void remove(String[] toRemove) {
-        createFormat(toRemove).ifPresent(format -> {
+        createFormat(Arrays.asList(toRemove)).ifPresent(format -> {
             formats.remove(format.getConsoleName());
             list.remove(toRemove);
         });
@@ -116,7 +120,7 @@ public class CustomExportList {
             purge(0);
         } else {
             for (int i = 0; i < list.size(); i++) {
-                Globals.prefs.putStringArray("customExportFormat" + i, list.get(i));
+                Globals.prefs.putStringList(JabRefPreferences.CUSTOM_EXPORT_FORMAT + i, Arrays.asList(list.get(i)));
             }
             purge(list.size());
         }
@@ -124,8 +128,8 @@ public class CustomExportList {
 
     private void purge(int from) {
         int i = from;
-        while (Globals.prefs.getStringArray("customExportFormat" + i) != null) {
-            Globals.prefs.remove("customExportFormat" + i);
+        while (!Globals.prefs.getStringList(JabRefPreferences.CUSTOM_EXPORT_FORMAT + i).isEmpty()) {
+            Globals.prefs.remove(JabRefPreferences.CUSTOM_EXPORT_FORMAT + i);
             i++;
         }
     }
